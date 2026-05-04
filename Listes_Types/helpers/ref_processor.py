@@ -30,7 +30,7 @@ class RefProcessor:
             row = {
                 "source_xml": os.path.basename(self.xml_path),
                 "current_xml_reference": current_ref,
-                "exists_in_excel": "Non",
+                "exists_in_excel": "No",
                 "excel_matched_sheet": "-",
                 "excel_matched_cell": "-",
                 "new_left_reference_found": "-",
@@ -38,8 +38,8 @@ class RefProcessor:
                 "left_source_cell": "-",
                 "left_distance": "-",
                 "raw_left_value": "-",
-                "file_found_in_folder": "Non",
-                "xml_updated": "Non",
+                "file_found_in_folder": "No",
+                "xml_updated": "No",
                 "old_xml_ref_value": old_xml_path,
                 "new_xml_ref_value": old_xml_path,
                 "status": "",
@@ -50,7 +50,7 @@ class RefProcessor:
             new_ref_detected = None
             
             if excel_match_cell:
-                row["exists_in_excel"] = "Oui"
+                row["exists_in_excel"] = "Yes"
                 row["excel_matched_sheet"] = excel_match_cell.parent.title
                 row["excel_matched_cell"] = excel_match_cell.coordinate
                 
@@ -59,9 +59,9 @@ class RefProcessor:
                     self.xml_obj.delete_node_by_ref(current_ref)
                     to_delete_data.append({
                         "source_xml": os.path.basename(self.xml_path),
-                        "file_found": matched_fs if found_fs else "Non",
+                        "file_found": matched_fs if found_fs else "No",
                         "ref": current_ref,
-                        "action": "À Supprimer"
+                        "action": "To Delete"
                     })
                     continue
 
@@ -75,8 +75,8 @@ class RefProcessor:
                     row["raw_left_value"] = left_info.get("raw_left_neighbor_value", "-")
                    
             else:
-                row["status"] = "NON_DANS_EXCEL"
-                row["reason"] = "Cette référence n'a pas été trouvée dans le fichier Excel. Elle est conservée sans modification."
+                row["status"] = "NOT_IN_EXCEL"
+                row["reason"] = "This reference was not found in the Excel file. It is kept without modification."
                 grid_data.append(row)
                 continue
 
@@ -84,31 +84,31 @@ class RefProcessor:
             found, matched_filename = self.fs_obj.search_in_folder_for_file_contains_reference(chosen_ref)
             
             if found:
-                row["file_found_in_folder"] = "Oui"
+                row["file_found_in_folder"] = "Yes"
                 match_count += 1
                 
                 is_updated, new_xml_path = self.xml_obj.update_reference(current_ref, matched_filename)
                 row["new_xml_ref_value"] = new_xml_path
                 
                 if is_updated:
-                    row["xml_updated"] = "Oui"
+                    row["xml_updated"] = "Yes"
                     update_count += 1
                     if new_ref_detected:
-                        row["status"] = "MIS_À_JOUR_AVEC_NOUVELLE_RÉFÉRENCE"
-                        row["reason"] = "Nouvelle référence trouvée et fichier FSCFAI correspondant présent."
+                        row["status"] = "UPDATED_WITH_NEW_REFERENCE"
+                        row["reason"] = "New reference found and corresponding FSCFAI file present."
                     else:
-                        row["status"] = "MIS_À_JOUR_RÉF_ACTUELLE"
-                        row["reason"] = "Référence actuelle maintenue, fichier FSCFAI mis à jour dans le XML."
+                        row["status"] = "UPDATED_CURRENT_REF"
+                        row["reason"] = "Current reference maintained, FSCFAI file updated in XML."
                 else:
-                    row["status"] = "DÉJÀ_À_JOUR"
-                    row["reason"] = "Le XML contient déjà le bon chemin vers le fichier FSCFAI."
+                    row["status"] = "ALREADY_UP_TO_DATE"
+                    row["reason"] = "XML already contains the correct path to the FSCFAI file."
             else:
                 if new_ref_detected:
-                    row["status"] = "NOUVELLE_RÉF_SANS_FICHIER"
-                    row["reason"] = f"Nouvelle réf {new_ref_detected} proposée mais aucun fichier FSCFAI trouvé."
+                    row["status"] = "NEW_REF_NO_FILE"
+                    row["reason"] = f"New ref {new_ref_detected} proposed but no FSCFAI file found."
                 else:
-                    row["status"] = "FICHIER_NON_TROUVÉ"
-                    row["reason"] = f"Aucun fichier FSCFAI trouvé pour {chosen_ref}."
+                    row["status"] = "FILE_NOT_FOUND"
+                    row["reason"] = f"No FSCFAI file found for {chosen_ref}."
                 
             grid_data.append(row)
         
@@ -129,8 +129,8 @@ class RefProcessor:
             if ref in self.context.fscfai_files:
                 found_fs, matched_fs = self.fs_obj.search_in_folder_for_file_contains_reference(ref)
                 to_add_data.append({
-                    "file_found": matched_fs if found_fs else "Non",
+                    "file_found": matched_fs if found_fs else "No",
                     "ref": ref,
-                    "action": "À Ajouter",
+                    "action": "To Add",
                 })
         return to_add_data

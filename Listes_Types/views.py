@@ -109,7 +109,7 @@ def download_file(request, filename):
     file_path = get_safe_path(str(base_temp_dir / filename))
 
     if not os.path.exists(file_path):
-        raise Http404("Le fichier n'existe pas.")
+        raise Http404("The file does not exist.")
 
     content_type = 'application/zip' if filename.endswith('.zip') else 'application/octet-stream'
     response = FileResponse(open(file_path, 'rb'), content_type=content_type)
