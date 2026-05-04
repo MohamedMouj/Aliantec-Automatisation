@@ -12,14 +12,14 @@
     <header class="page-header">
         <img src="{% static 'edit.svg' %}" alt="Listes-Types Icon">
         <div>
-            <h1>Mise à jour des ListesTypes</h1>
-            <p>Processus d'automatisation pour synchroniser les fichiers Listes-Types avec PTA.</p>
+            <h1>Listes-Types Update</h1>
+            <p>Automation process to synchronize Listes-Types files with PTA.</p>
         </div>
     </header>
 
     {% if error %}
     <div class="alert alert-error">
-        <strong>Erreur :</strong> {{ error }}
+        <strong>Error:</strong> {{ error }}
     </div>
     {% endif %}
 
@@ -31,17 +31,17 @@
             
             <div class="form-grid">
                 <div class="field-group">
-                    <label for="pta_file">Fichier PTA (Excel)</label>
+                    <label for="pta_file">PTA File (Excel)</label>
                     <div class="file-input-wrapper">
                         <input type="file" name="pta_file" id="pta_file" accept=".xlsx, .xls, .xlsm" required>
                         <div class="file-input-label">
-                            <span>&#128195 Choisir un fichier Excel</span>
-                            <small id="pta_file_name">Aucun fichier sélectionné</small>
+                            <span>&#128195 Choose an Excel file</span>
+                            <small id="pta_file_name">No file selected</small>
                         </div>
                     </div>
                 </div>
                 <div class="field-group">
-                    <label for="zipped_fscfai_input">Dossier Zip (ListesTypes + Fichiers FSCFAI)</label>
+                    <label for="zipped_fscfai_input">Zip Folder (Listes-Types + FSCFAI Files)</label>
                     <div class="file-input-wrapper">
                         <!-- We use a separate input for the raw user ZIP -->
                         <input type="file" id="zipped_fscfai_input" accept=".zip" required>
@@ -49,8 +49,8 @@
                         <input type="file" name="zipped_fscfai" id="zipped_fscfai_actual" style="display:none;">
                         
                         <div class="file-input-label">
-                            <span>📦 Choisir un fichier ZIP</span>
-                            <small id="zip_file_name">Aucun fichier zip sélectionné</small>
+                            <span>📦 Choose a ZIP file</span>
+                            <small id="zip_file_name">No zip file selected</small>
                         </div>
                     </div>
                 </div>
@@ -58,11 +58,11 @@
             
             <p class="mt-4 mb-4" style="font-size: 0.8125rem;">
                 <span style="color: var(--primary); font-weight: 700;">* Note:</span> 
-                Le ZIP doit contenir les fichiers .list à mettre à jour et les fichiers .fscfai sources.
+                The ZIP must contain the .list files to be updated and the source .fscfai files.
             </p>
             
             <button type="submit" class="btn btn-primary" id="btn-lancer_traitement" style="width: 100%;">
-                LANCER LE TRAITEMENT
+                START PROCESSING
             </button>
         </form>
     </div>
@@ -70,31 +70,31 @@
     {% if processed %}
     <div class="results-section mt-8">
         <div class="mb-4" style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0;">Résultats du traitement</h2>
+            <h2 style="margin: 0;">Processing Results</h2>
             <span class="badge" style="background: var(--primary-light); color: var(--primary); padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 700; font-size: 0.875rem;">
-                {{ xml_count }} Fichiers XML traités
+                {{ xml_count }} XML Files processed
             </span>
         </div>
 
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-label">Total Analysées</div>
+                <div class="stat-label">Total Analyzed</div>
                 <div class="stat-value">{{ summary.total }}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Correspondances</div>
+                <div class="stat-label">Matches</div>
                 <div class="stat-value">{{ summary.matches }}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Mises à jour</div>
+                <div class="stat-label">Updates</div>
                 <div class="stat-value">{{ summary.updates }}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">À Supprimer</div>
+                <div class="stat-label">To Delete</div>
                 <div class="stat-value" style="color: var(--error);">{{ summary.deletes }}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">À Ajouter</div>
+                <div class="stat-label">To Add</div>
                 <div class="stat-value" style="color: var(--success);">{{ summary.new_in_excel }}</div>
             </div>
         </div>
@@ -102,12 +102,12 @@
         <div class="tab-container mt-8">
             <div class="tab-nav">
                 <div class="tab-link active" onclick="openTab(event, 'tab1')">Updates</div>
-                <div class="tab-link" onclick="openTab(event, 'tab2')">A Ajouter</div>
-                <div class="tab-link" onclick="openTab(event, 'tab3')">A Supprimer</div>
+                <div class="tab-link" onclick="openTab(event, 'tab2')">To Add</div>
+                <div class="tab-link" onclick="openTab(event, 'tab3')">To Delete</div>
             </div>
 
             <div class="search-bar">
-                <input type="text" id="searchInput" class="search-input" onkeyup="filterTable()" placeholder="Rechercher dans les résultats...">
+                <input type="text" id="searchInput" class="search-input" onkeyup="filterTable()" placeholder="Search in results...">
             </div>
 
             <div id="tab1" class="tab-pane active">
@@ -136,7 +136,7 @@
         </div>
 
         <div class="card text-center mt-8" style="border: 2px solid var(--primary-light); background: var(--primary-light);">
-            <p class="mb-4"><strong>Téléchargement prêt</strong></p>
+            <p class="mb-4"><strong>Download ready</strong></p>
             <a href="{% url 'download_zip' filename=output_path %}" class="btn btn-primary">
                 Download Results (.zip)
             </a>
@@ -150,7 +150,7 @@
     <script>
         // File name display
         document.getElementById('pta_file').addEventListener('change', function() {
-            document.getElementById('pta_file_name').textContent = this.files[0] ? this.files[0].name : 'Aucun fichier sélectionné';
+            document.getElementById('pta_file_name').textContent = this.files[0] ? this.files[0].name : 'No file selected';
         });
         document.getElementById('zipped_fscfai_input').addEventListener('change', function() {
             document.getElementById('zip_file_name').textContent = this.files[0] ? this.files[0].name : 'Ex: FSCFAI 2024.zip';
@@ -217,13 +217,13 @@
             const pta_file_file = document.getElementById('pta_file').files[0];
             
             if(!fscfai_folder_file || !pta_file_file){
-                alert('Veuillez sélectionner un dossier ZIP de ListesTypes et un fichier PTA.');
+                alert('Please select a Listes-Types ZIP folder and a PTA file.');
                 return;
             }
 
             const btn = document.getElementById('btn-lancer_traitement');
             const originalText = btn.innerText;
-            btn.innerText = 'PRÉPARATION DU ZIP...';
+            btn.innerText = 'PREPARING ZIP...';
             btn.disabled = true;
 
             try {
@@ -254,13 +254,13 @@
                 await Promise.all(filePromises);
 
                 if (listCount === 0) {
-                    alert('Aucun fichier .list trouvé dans le ZIP.');
+                    alert('No .list files found in the ZIP.');
                     btn.innerText = originalText;
                     btn.disabled = false;
                     return;
                 }
 
-                btn.innerText = 'ENVOI AU SERVEUR...';
+                btn.innerText = 'SENDING TO SERVER...';
                 
                 const filteredZipBlob = await newZip.generateAsync({type: 'blob'});
                 
@@ -281,10 +281,12 @@
 
             } catch (err) {
                 console.error(err);
-                alert('Erreur lors de la lecture du fichier ZIP : ' + err.message);
+                alert('Error reading ZIP file: ' + err.message);
                 btn.innerText = originalText;
                 btn.disabled = false;
             }
         });
+    </script>
+
     </script>
 {% endblock %}
