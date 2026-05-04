@@ -1,0 +1,43 @@
+# Django
+db.sqlite3
+staticfiles/
+media/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+my-venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.renv
+*.mpy
+
+# Project specific temporary folders
+Listes_Types/t/
+Listes_Types/temp/
+Listes_Types/services/__pycache__/
+Listes_Types/helpers/__pycache__/
+Listes_Types/migrations/__pycache__/
+Main/__pycache__/
+Main/migrations/__pycache__/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# OS
+.DS_Store
+Thumbs.db

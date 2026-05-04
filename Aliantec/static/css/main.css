@@ -1,0 +1,101 @@
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.dashboard-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 1rem 0;
+}
+
+.app-card {
+    position: relative;
+    height: 260px;
+    perspective: 1200px;
+    cursor: pointer;
+}
+
+.app-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.app-card:hover .app-card-inner {
+    transform: rotateY(180deg);
+}
+
+.app-card-front, .app-card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+}
+
+.app-card-back {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    transform: rotateY(180deg);
+    border: none;
+}
+
+.app-card:hover .app-card-front {
+    border-color: var(--primary);
+    box-shadow: 0 0 25px var(--primary-glow);
+}
+
+.app-card-front img {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 1.5rem;
+    transition: transform 0.4s ease;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));
+}
+
+.app-card:hover .app-card-front img {
+    transform: scale(1.15) translateY(-5px);
+}
+
+.app-card-front h3 {
+    font-size: 1.25rem;
+    color: var(--secondary);
+    margin: 0;
+}
+
+.app-card-back h3 {
+    color: white;
+    margin-bottom: 1rem;
+    font-size: 1.35rem;
+}
+
+.app-card-back p {
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+}
+
+/* Featured card style */
+.app-card.featured .app-card-front {
+    border-top: 4px solid var(--primary);
+}
