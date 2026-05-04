@@ -138,7 +138,7 @@ class excel_parser():
             if max_col and cell.column > max_col:
                 break
             fill = cell.fill
-            if not fill:# and cell.value != "CARRYOVER":
+            if not fill and str(cell.value).lower() not in ["carryover", "traite", "", "treated"]:
                 continue
                 
             if hasattr(fill, 'start_color') and fill.start_color:
