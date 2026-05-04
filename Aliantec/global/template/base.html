@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Aliantec Automation Toolkit{% endblock %}</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+   
+    <link rel="icon" type="image/svg+xml" href="{% static 'logo.svg' %}">
+    <link href="{% static 'css/base.css' %}" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="navbar">
+        <div class="app-container navbar-content">
+            <a href="/" class="brand">
+                <img src="{% static 'logo.svg' %}" alt="Aliantec Logo" class="nav-logo">
+                <span>Aliantec ToolKit</span>
+            </a>
+            
+            <nav class="nav-links">
+                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Applications</a>
+                <a href="/listes_types/" class="nav-link {% if 'listes_types' in request.path %}active{% endif %}">Listes-Types</a>
+                <a href="#" class="nav-link">?</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="app-container">
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}
+            {% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="app-container">
+            <p class="footer-text">© 2026 Aliantec. All rights reserved. | Enterprise Automation Toolkit</p>
+        </div>
+    </footer>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
