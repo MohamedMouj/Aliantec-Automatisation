@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django_tables2',
     'Main',
     'Listes_Types',
+    'FSCFAI_Compare',
 ]
 
 MIDDLEWARE = [

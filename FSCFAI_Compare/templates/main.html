@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}FSCFAI File Compare{% endblock %}
+
+{% block extra_css %}
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+    <section class="dashboard-header">
+        <h1>FSCFAI File Compare</h1>
+        <p>Select two ref, and compare their corresponding FSCFAI files</p>
+    </section>
+
+    <section class="upload-section">
+        <form id="upload-form" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="input_file">Upload XLSX File</label>
+                <div class="file-upload-container">
+                    <input type="file" id="input_file" name="input_file" accept=".xlsx" required>
+                    <label for="input_file" class="file-upload-label">
+                        <span>Choose File</span>
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Process File</button>
+        </form>
+    </section>
+{% endblock %}
