@@ -8,7 +8,7 @@ class RefProcessor:
         self.context = context
         self.xml_path = self.xml_obj.xml_file_name
 
-    def run(self, progress_callback=None):
+    def run(self):
         """
         Executes the full processing logic for ONE XML file.
         """
@@ -69,7 +69,7 @@ class RefProcessor:
                 new_ref_detected = left_info["new_reference_detected"]
                 if new_ref_detected:
                     row["new_left_reference_found"] = new_ref_detected
-                    row["chosen_reference_for_folder_search"] = new_ref_detected
+                    row["chosen_reference_for_folder_search"] = new_ref_detected if new_ref_detected else current_ref
                     row["left_source_cell"] = left_info.get("left_neighbor_source_cell", "-")
                     row["left_distance"] = left_info.get("left_neighbor_distance", "-")
                     row["raw_left_value"] = left_info.get("raw_left_neighbor_value", "-")
@@ -77,8 +77,8 @@ class RefProcessor:
             else:
                 row["status"] = "NOT_IN_EXCEL"
                 row["reason"] = "This reference was not found in the Excel file. It is kept without modification."
-                grid_data.append(row)
-                continue
+                # grid_data.append(row)
+                # continue
 
             chosen_ref = row["chosen_reference_for_folder_search"]
             found, matched_filename = self.fs_obj.search_in_folder_for_file_contains_reference(chosen_ref)
