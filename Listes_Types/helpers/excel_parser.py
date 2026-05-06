@@ -31,13 +31,12 @@ class excel_parser():
                     
                 ref_string = self.extract_reference_from_cell(ref_cell)
                 if ref_string:
-                    # Optimized logic: only index if it exists in loaded XMLs OR it's a new candidate
                     if ref_string in self.context.all_xml_references:
                         if ref_string not in self.context.excel_index:
                             self.context.excel_index[ref_string] = ref_cell
-                    elif not self.check_right_neighbors(ref_cell):
-                        if not self.is_deleted(row, ref_cell):
-                            self.context.new_refs.add(ref_string)
+                    # elif not self.check_right_neighbors(ref_cell):
+                    #     if not self.is_deleted(row, ref_cell):
+                    #         self.context.new_refs.add(ref_string)
                     else:
                         # Scan for other valid refs in the same row if multiple exist
                         found = False
@@ -46,11 +45,12 @@ class excel_parser():
                             refs.append(ref_string)
                             ref_cell=self.find_first_valid_ref_from_left(row, refs) 
                             ref_string=self.extract_reference_from_cell(ref_cell)
-                            if ref_cell is None: 
+                            #important changes
+                            if ref_cell is None or ref_cell.column>26: 
                                 break
-                            if ref_string in self.context.all_xml_references:
-                                self.context.excel_index[ref_string] = ref_cell
-                                found = True
+                        if ref_string in self.context.all_xml_references:
+                            self.context.excel_index[ref_string] = ref_cell
+                            found = True
 
     def search_by_ref(self, ref):
         ref = str(ref).strip()

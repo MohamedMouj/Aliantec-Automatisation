@@ -125,11 +125,11 @@ class RefProcessor:
 
     def detect_new_ref(self):
         to_add_data = []
-        for ref in self.context.new_refs:
-            if ref in self.context.fscfai_files:
-                found_fs, matched_fs = self.fs_obj.search_in_folder_for_file_contains_reference(ref)
+        for ref, file_name in self.context.fscfai_files.items():
+            if ref not in self.context.all_xml_references:
+                # found_fs, matched_fs = self.fs_obj.search_in_folder_for_file_contains_reference(ref)
                 to_add_data.append({
-                    "file_found": matched_fs if found_fs else "No",
+                    "file_found": file_name,
                     "ref": ref,
                     "action": "To Add",
                 })
