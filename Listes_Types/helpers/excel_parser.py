@@ -86,15 +86,24 @@ class excel_parser():
         return False 
 
     def extract_reference_from_cell(self, cell):
+        # if cell is None or cell.value is None:
+        #     return None
+        # value = str(cell.value).strip()
+        # if re.fullmatch(r"\d{10}", value):
+        #     return value
+        # match = re.match(r"^(\d{10})[-_*/.\\\\s]\d{2}", value)
+        # if match:
+        #     return match.group(1)
+        # return None
         if cell is None or cell.value is None:
             return None
         value = str(cell.value).strip()
-        if re.fullmatch(r"\d{10}", value):
-            return value
-        match = re.match(r"^(\d{10})[-_*/.\\]\d{2}", value)
+        # Searches for exactly 10 digits anywhere in the string
+        match = re.search(r"\d{10}", value)
         if match:
-            return match.group(1)
+            return match.group(0)
         return None
+
 
     def check_left_neighbors_4_cells_detailed(self, cell):
         best_candidate = {
@@ -138,7 +147,9 @@ class excel_parser():
             if max_col and cell.column > max_col:
                 break
             fill = cell.fill
-            if not fill and str(cell.value).lower() not in ["carryover", "traite", "", "treated"]:
+            if str(cell.value).lower() in ["carryover", "traite", "", "treated"] and not (hasattr(cell.font, 'strike') and cell.font.strike):
+                break
+            if not fill:
                 continue
                 
             if hasattr(fill, 'start_color') and fill.start_color:
@@ -242,3 +253,4 @@ class excel_parser():
         return self.row_contains_cancelled_status(row, max_col=cell.column) or \
                self.row_contains_red_cell(row, max_col=cell.column) or \
                self.row_contains_strike_cell(row, max_col=cell.column)
+               #(self.row_contains_strike_cell(row, max_col=cell.column) and self.row_contains_red_cell(row, max_col=cell.column)) or \
