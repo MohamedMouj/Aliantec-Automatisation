@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'Main',
     'Listes_Types',
     'FSCFAI_Compare',
+    'Listing_Devices',
 ]
 
 MIDDLEWARE = [
