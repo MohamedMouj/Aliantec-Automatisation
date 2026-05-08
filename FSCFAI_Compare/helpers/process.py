@@ -1,21 +1,24 @@
-from excel import ExcelHelper
-from fs import FsHelper
+import os
+from pathlib import Path
+from .excel import ExcelHelper
+from .fs import FsHelper
 import difflib
 import re
 
 class CompareProcess:
-    def __init__(self, excel_file, folder_path):
+    def __init__(self, excel_file, folder_path, output_dir=None):
         self.excel_file = excel_file
         self.folder_path = folder_path
+        self.output_dir = Path(output_dir) if output_dir else Path.cwd()
         self.excel_helper = ExcelHelper(excel_file)
         self.fs_helper = FsHelper(folder_path)
         
-        self.full_conten = """<!DOCTYPE html>
+        self.html_template_start = """<!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Comparison Results</title>
+            <title>Comparison Results - {title}</title>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
                 :root {
@@ -84,7 +87,6 @@ class CompareProcess:
                     border-bottom: 1px solid #f1f5f9;
                 }
 
-                /* Target the specific content columns to fix wrapping without squashing */
                 table.diff td[nowrap="nowrap"] {
                     width: 47%;
                     min-width: 47%;
@@ -93,7 +95,6 @@ class CompareProcess:
                     word-break: break-word;
                 }
 
-                /* Line numbers */
                 .diff_header {
                     width: 3%;
                     text-align: right !important;
@@ -104,21 +105,17 @@ class CompareProcess:
                     user-select: none;
                 }
 
-                /* Colors for diffs */
                 .diff_add { background-color: var(--add-bg); color: var(--add-text); }
                 .diff_sub { background-color: var(--sub-bg); color: var(--sub-text); }
                 .diff_chg { background-color: var(--chg-bg); color: var(--chg-text); }
-
-                /* Hide the unclear 't' and 'n' columns completely */
                 .diff_next { display: none; }
-                
-                /* Hide native HtmlDiff colgroups which break our fixed layout */
                 colgroup { display: none; }
             </style>
         </head>
         <body>
             <div class="header">
                 <h1>FSCFAI Compare Report</h1>
+                <p>Comparison between {old_ref} and {new_ref}</p>
             </div>
         """
 
@@ -128,6 +125,8 @@ class CompareProcess:
 
     def start(self):
         all_refs_couples = self.excel_helper.get_all_ref_couples()
+        results = []
+        
         
         for data in all_refs_couples:
             old_ref = data.get("OLD")
@@ -140,68 +139,58 @@ class CompareProcess:
             new_fscfai = self.fs_helper.find_fscfai_files(new_ref)
 
             if old_fscfai and new_fscfai:
-                list1, list2, f1, f2=self.match(old_fscfai, new_fscfai)
-                self.diff(list1, list2, f1, f2)
-
-        self.full_conten += "</body>\n</html>"
-
-        output_filename = f"diff_test.html"
-        with open(output_filename, "w", encoding="utf-8") as f:
-            f.write(self.full_conten)
-        print(f"Generated diff: {output_filename}")
+                print(f"DEBUG: Match found for {old_ref} vs {new_ref}")
+                list1, list2, f1, f2 = self.match(old_fscfai, new_fscfai)
+                diff_table = self.generate_diff_table(list1, list2, f1, f2)
+                
+                results.append({
+                    "old_ref": old_ref,
+                    "new_ref": new_ref,
+                    "diff_content": diff_table
+                })
+            else:
+                if not old_fscfai:
+                    print(f"DEBUG: Missing FSCFAI for OLD ref: {old_ref}")
+                if not new_fscfai:
+                    print(f"DEBUG: Missing FSCFAI for NEW ref: {new_ref}")
+        
+        print(f"DEBUG: Total results generated: {len(results)}")
+        return results
             
-    def diff(self, list1, list2, f1, f2):
-        
-        differ = difflib.HtmlDiff(
-            tabsize=2
-        )
-        
-        
-        diff_table = differ.make_table(
+    def generate_diff_table(self, list1, list2, f1, f2):
+        differ = difflib.HtmlDiff(tabsize=2)
+        # We only need the table part, not the whole HTML document
+        return differ.make_table(
             list1,
             list2,
             fromdesc=f"OLD: ({f1})",
             todesc=f"NEW: ({f2})",
             context=True,
             numlines=3
-        )  
+        )
 
-        self.full_conten += diff_table
-       
     def match(self, list1, list2):
-        f1, list1 = next(iter(list1.items()))
-        f2, list2 = next(iter(list2.items()))
+        f1, list1_content = next(iter(list1.items()))
+        f2, list2_content = next(iter(list2.items()))
 
-        old_lines = [self.normalize_line(l) for l in list1]
-        new_lines = [self.normalize_line(l) for l in list2]
+        old_lines = [self.normalize_line(l) for l in list1_content]
+        new_lines = [self.normalize_line(l) for l in list2_content]
 
         tmp = []
 
         for i, item in enumerate(old_lines):
-            found=False
+            elems = item.split("  ")
+            found = False
             for j, item2 in enumerate(new_lines):
-                elems=item.split("  ")
-                elems2=item2.split("  ")
-                if elems[0] == elems2[0]:
+                elems2 = item2.split("  ")
+                if len(elems) > 0 and len(elems2) > 0 and elems[0] == elems2[0]:
                     tmp.append(item2)
-                    found=True
+                    found = True
                     break
             if not found:
                 for j, item2 in enumerate(new_lines):
-                    if elems[5] == elems2[5] and elems[-1] == elems2[-1]:
+                    elems2 = item2.split("  ")
+                    if len(elems) > 5 and len(elems2) > 5 and elems[5] == elems2[5] and elems[-1] == elems2[-1]:
                         tmp.append(item2)
                         break
-                
-
-
-        print(tmp)
-                    
         return old_lines, tmp, f1, f2
-                            
-
-
-test = CompareProcess("C:\\Users\\User\\OneDrive\\Bureau\\P21\\P21\\Test.xlsx", "C:\\Users\\User\\OneDrive\\Bureau\\P21\\P21\\FSCFAI")
-test.start()
-
-
-    

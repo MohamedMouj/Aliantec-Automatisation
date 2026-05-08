@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <style>
+        /* Processing Overlay Styles */
+        #processing-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn-standard {
+            width: 100%;
+            padding: 1.25rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-standard:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--primary-glow);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <h1>Device Listing</h1>
+        <p>Extract comprehensive device data from FSCFAI archives into structured Excel inventories.</p>
+    </header>
+
+    <div class="card" style="max-width: 600px; margin: 0 auto; padding: 3rem;">
+        <form id="upload-form" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group mb-8">
+                <label style="display: block; font-weight: 700; margin-bottom: 1rem; color: var(--text-main);">FSCFAI Archive (ZIP)</label>
+                <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 3rem; text-align: center; transition: var(--transition); background: var(--background);">
+                    <div class="icon" style="font-size: 2.5rem; margin-bottom: 1rem;">📦</div>
+                    <div class="text" style="font-weight: 600; color: var(--text-main);">Select Source ZIP</div>
+                    <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem;">FSCFAI File Collection (.zip)</p>
+                    <input type="file" name="input_zip" accept=".zip" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-standard">
+                <span>Generate Device Inventory</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+        </form>
+    </div>
+
+    <div id="processing-overlay">
+        <div class="spinner"></div>
+        <h2 style="color: white; margin-bottom: 0.5rem;">Generating Inventory...</h2>
+        <p style="color: rgba(255,255,255,0.7);">Extracting device metadata from source files.</p>
+    </div>
+
+    <script>
+        document.querySelector('input[type="file"]').addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const textEl = this.parentElement.querySelector('.text');
+                textEl.textContent = this.files[0].name;
+                textEl.style.color = 'var(--primary)';
+                this.parentElement.style.borderColor = 'var(--primary)';
+                this.parentElement.style.background = 'var(--primary-light)';
+            }
+        });
+
+        document.getElementById('upload-form').addEventListener('submit', function() {
+            document.getElementById('processing-overlay').style.display = 'flex';
+        });
+    </script>
+{% endblock %}
+

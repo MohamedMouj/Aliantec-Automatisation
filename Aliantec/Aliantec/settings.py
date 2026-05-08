@@ -134,3 +134,7 @@ STATICFILES_DIRS = [
 
 # The folder where 'collectstatic' will gather all files for production (Apache)
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media files (Uploaded files, generated reports)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
