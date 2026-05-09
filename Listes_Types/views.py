@@ -62,7 +62,7 @@ def index(request):
             results, error = orchestrator.process_all()
 
             if error:
-                return render(request, 'index.html', {'error': error})
+                return render(request, 'Listes_Types/index.html', {'error': error})
 
             # Prepare tables
             table_updates = UpdateTable(results["all_grid_data"])
@@ -83,12 +83,12 @@ def index(request):
                 'xml_count': results["total_summary"].get("xml_count", []),
             }
 
-            return render(request, 'index.html', context)
+            return render(request, 'Listes_Types/index.html', context)
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return render(request, 'index.html', {'error': str(e)})
+            # import traceback
+            # traceback.print_exc()
+            return render(request, 'Listes_Types/index.html', {'error': str(e)})
 
         finally:
             # Clean up
@@ -101,7 +101,7 @@ def index(request):
             except:
                 pass
 
-    return render(request, 'index.html')
+    return render(request, 'Listes_Types/index.html')
 
 def download_file(request, filename):
     base_temp_dir = Path(settings.BASE_DIR).parent / 'Listes_Types' / 't'
