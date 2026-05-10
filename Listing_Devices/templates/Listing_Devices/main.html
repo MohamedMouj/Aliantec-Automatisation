@@ -64,6 +64,12 @@
         <p>Extract comprehensive device data from FSCFAI archives into structured Excel inventories.</p>
     </header>
 
+    {% if error %}
+    <div class="alert alert-error" style="max-width: 600px; margin: 0 auto 2rem; border-left: 4px solid var(--error); background: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: var(--radius-md);">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
     <div class="card" style="max-width: 600px; margin: 0 auto; padding: 3rem;">
         <form id="upload-form" method="post" enctype="multipart/form-data">
             {% csrf_token %}
@@ -78,7 +84,7 @@
             </div>
 
             <button type="submit" class="btn-standard">
-                <span>Generate Device Inventory</span>
+                <span>Generate</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </button>
         </form>
@@ -86,24 +92,88 @@
 
     <div id="processing-overlay">
         <div class="spinner"></div>
-        <h2 style="color: white; margin-bottom: 0.5rem;">Generating Inventory...</h2>
-        <p style="color: rgba(255,255,255,0.7);">Extracting device metadata from source files.</p>
+        <h2 style="color: white; margin-bottom: 0.5rem;">Generating...</h2>
+        <p style="color: rgba(255,255,255,0.7);">Extracting data from source files.</p>
     </div>
 
     <script>
-        document.querySelector('input[type="file"]').addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                const textEl = this.parentElement.querySelector('.text');
-                textEl.textContent = this.files[0].name;
-                textEl.style.color = 'var(--primary)';
-                this.parentElement.style.borderColor = 'var(--primary)';
-                this.parentElement.style.background = 'var(--primary-light)';
+        const bindFileInput = () => {
+            const fileInput = document.querySelector('input[type="file"]');
+            if (fileInput) {
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        const textEl = this.parentElement.querySelector('.text');
+                        textEl.textContent = this.files[0].name;
+                        textEl.style.color = 'var(--primary)';
+                        this.parentElement.style.borderColor = 'var(--primary)';
+                        this.parentElement.style.background = 'var(--primary-light)';
+                    }
+                });
             }
-        });
+        };
 
-        document.getElementById('upload-form').addEventListener('submit', function() {
-            document.getElementById('processing-overlay').style.display = 'flex';
+        bindFileInput();
+
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const overlay = document.getElementById('processing-overlay');
+            const form = this;
+            const formData = new FormData(form);
+            
+            overlay.style.display = 'flex';
+
+            try {
+                const response = await fetch(form.action || window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && (contentType.includes('spreadsheetml') || contentType.includes('octet-stream'))) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        
+                        const disposition = response.headers.get('content-disposition');
+                        let filename = 'all_devices.xlsx';
+                        if (disposition && disposition.indexOf('filename=') !== -1) {
+                            filename = disposition.split('filename=')[1].replaceAll('"', '').trim();
+                        }
+                        
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                        overlay.style.display = 'none';
+                    } else {
+                        // Response is HTML (likely an error message)
+                        const html = await response.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newContent = doc.querySelector('main .app-container');
+                        if (newContent) {
+                            document.querySelector('main .app-container').innerHTML = newContent.innerHTML;
+                            // Re-bind listeners for the new DOM elements
+                            bindFileInput();
+                        }
+                        overlay.style.display = 'none';
+                    }
+                } else {
+                    alert('Server error: ' + response.status);
+                    overlay.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Request failed:', error);
+                alert('Connection error. Please try again.');
+                overlay.style.display = 'none';
+            }
         });
     </script>
 {% endblock %}
-
+
