@@ -13,8 +13,9 @@ class Orchestrator:
         self.pta_full_path = pta_full_path
         self.zip_path = zip_path
         self.extract_dir = extract_dir
-        self.fscfai_data = fscfai_data
+        # self.fscfai_data = fscfai_data
         self.context = SharedData()
+        self.context.fscfai_files = fscfai_data
         
         # The TEMP_DIR is the parent of the extract_dir (the session folder)
         # We use abspath and ensure it's handled safely
@@ -25,8 +26,8 @@ class Orchestrator:
     def process_all(self):
         excel_helper = None
         try:
-            if self.fscfai_data:
-                self.context.fscfai_files = self.fscfai_data
+            # if self.fscfai_data:
+            #     self.context.fscfai_files = self.fscfai_data
             
             fs_helper = file_system_manipulation(self.extract_dir, self.context)
             fs_helper.scan_zip(self.zip_path, self.extract_dir)

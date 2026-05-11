@@ -7,6 +7,10 @@ class ExcelHelper:
         self.wb = openpyxl.load_workbook(self.excel_file, read_only=True)
         self.data=None
 
+    def close(self):
+        if hasattr(self, 'wb'):
+            self.wb.close()
+
     def get_all_ref_couples(self):
         data_list=[]
         sheet = self.wb[self.wb.sheetnames[0]]
@@ -27,9 +31,8 @@ class ExcelHelper:
         return data_list
             
     def extract_reference_from_cell(self, cell):
-        # if cell is None or cell.value is None:
-        #     return None
-        # value = str(cell.value).strip()
+       
+       
         # if re.fullmatch(r"\d{10}", value):
         #     return value
         # match = re.match(r"^(\d{10})[-_*/.\\\\s]\d{2}", value)
@@ -39,7 +42,6 @@ class ExcelHelper:
         if cell is None or cell.value is None:
             return None
         value = str(cell.value).strip()
-        # Searches for exactly 10 digits anywhere in the string
         match = re.search(r"\d{10}", value)
         if match:
             return match.group(0)
