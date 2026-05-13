@@ -54,8 +54,11 @@ def index(request):
         extracted_folder = get_safe_path(os.path.join(safe_session_dir, 'e'))
         os.makedirs(extracted_folder, exist_ok=True)
 
+        # Get the parse direction from the checkbox
+        parse_right = request.POST.get('parse_right') == 'on'
+
         try:
-            orchestrator = Orchestrator(excel_path, zip_path, extracted_folder, fscfai_data=fscfai_data)
+            orchestrator = Orchestrator(excel_path, zip_path, extracted_folder, fscfai_data=fscfai_data, parse_right=parse_right)
             results, error = orchestrator.process_all()
 
             if error:

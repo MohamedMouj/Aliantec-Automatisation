@@ -1,12 +1,13 @@
 import os
 
 class RefProcessor:
-    def __init__(self, excel_obj, xml_obj, fs_obj, context):
+    def __init__(self, excel_obj, xml_obj, fs_obj, context, parse_right=False):
         self.excel_obj = excel_obj
         self.xml_obj = xml_obj
         self.fs_obj = fs_obj
         self.context = context
         self.xml_path = self.xml_obj.xml_file_name
+        self.parse_right = parse_right
 
     def run(self):
         """
@@ -23,7 +24,10 @@ class RefProcessor:
         update_count = 0
         match_count = 0
         
-        for i, ref_data in enumerate(current_references_data):
+        # Determine iteration order
+        refs_to_process = reversed(current_references_data) if self.parse_right else current_references_data
+        
+        for i, ref_data in enumerate(refs_to_process):
             current_ref = ref_data["ref"]
             old_xml_path = ref_data["old_val"]
             
@@ -33,11 +37,11 @@ class RefProcessor:
                 "exists_in_excel": "No",
                 "excel_matched_sheet": "-",
                 "excel_matched_cell": "-",
-                "new_left_reference_found": "-",
+                "new_reference_found": "-",
                 "chosen_reference_for_folder_search": current_ref,
-                "left_source_cell": "-",
-                "left_distance": "-",
-                "raw_left_value": "-",
+                "neighbor_source_cell": "-",
+                "neighbor_distance": "-",
+                "raw_neighbor_value": "-",
                 "file_found_in_folder": "No",
                 "xml_updated": "No",
                 "old_xml_ref_value": old_xml_path,
@@ -64,21 +68,19 @@ class RefProcessor:
                         "action": "To Delete"
                     })
                     continue
-                #modify here
-                left_info = self.excel_obj.check_left_neighbors_4_cells_detailed(excel_match_cell)
-                new_ref_detected = left_info["new_reference_detected"]
+
+                neighbor_info = self.excel_obj.check_neighbors_detailed(excel_match_cell)
+                new_ref_detected = neighbor_info["new_reference_detected"]
                 if new_ref_detected:
-                    row["new_left_reference_found"] = new_ref_detected
+                    row["new_reference_found"] = new_ref_detected
                     row["chosen_reference_for_folder_search"] = new_ref_detected if new_ref_detected else current_ref
-                    row["left_source_cell"] = left_info.get("left_neighbor_source_cell", "-")
-                    row["left_distance"] = left_info.get("left_neighbor_distance", "-")
-                    row["raw_left_value"] = left_info.get("raw_left_neighbor_value", "-")
+                    row["neighbor_source_cell"] = neighbor_info.get("neighbor_source_cell", "-")
+                    row["neighbor_distance"] = neighbor_info.get("neighbor_distance", "-")
+                    row["raw_neighbor_value"] = neighbor_info.get("raw_neighbor_value", "-")
                    
             else:
                 row["status"] = "NOT_IN_EXCEL"
                 row["reason"] = "This reference was not found in the Excel file. It is kept without modification."
-                # grid_data.append(row)
-                # continue
 
             chosen_ref = row["chosen_reference_for_folder_search"]
             found, matched_filename = self.fs_obj.search_in_folder_for_file_contains_reference(chosen_ref)
@@ -125,7 +127,8 @@ class RefProcessor:
 
     def detect_new_ref(self):
         to_add_data = []
-        for ref, file_name in self.context.fscfai_files.items():
+        items = reversed(list(self.context.fscfai_files.items())) if self.parse_right else self.context.fscfai_files.items()
+        for ref, file_name in items:
             if ref not in self.context.all_xml_references:
                 # found_fs, matched_fs = self.fs_obj.search_in_folder_for_file_contains_reference(ref)
                 to_add_data.append({

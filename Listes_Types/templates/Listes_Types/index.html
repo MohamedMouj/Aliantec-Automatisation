@@ -65,7 +65,7 @@
 {% block content %}
     <header class="page-header">
         <h1>Listes-Types Update</h1>
-        <p>Automated synchronization of Listes-Types documents with PTA ledger data.</p>
+        <p>Automated synchronization of Listes-Types documents with PTA data.</p>
     </header>
 
 
@@ -84,34 +84,34 @@
             
             <div class="form-grid">
                 <div class="field-group">
-                    <label>PTA Ledger (Excel)</label>
+                    <label>PTA(Excel)</label>
                     <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
                         <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📊</div>
                         <div class="text" style="font-weight: 600; color: var(--text-main);">Select Excel File</div>
-                        <small id="pta_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">PTA Mapping Data (.xlsx)</small>
+                        <small id="pta_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">PTA Mapping Data (.xlsx, .xls, .xlsm)</small>
                         <input type="file" name="pta_file" id="pta_file" accept=".xlsx, .xls, .xlsm" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
                     </div>
                 </div>
                 <div class="field-group">
-                    <label>FSCFAI Archive (ZIP)</label>
+                    <label>FSCFAI (ZIP)</label>
                     <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
                         <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📦</div>
                         <div class="text" style="font-weight: 600; color: var(--text-main);">Select Source ZIP</div>
                         <small id="zip_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">FSCFAI File Collection (.zip)</small>
-                        <!-- We use a separate input for the raw user ZIP -->
                         <input type="file" id="zipped_fscfai_input" accept=".zip" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
-                        <!-- This is the actual input sent to Django -->
                         <input type="file" name="zipped_fscfai" id="zipped_fscfai_actual" style="display:none;">
                     </div>
                 </div>
             </div>
             
-            <p class="mt-4 mb-4" style="font-size: 0.8125rem; text-align: center;">
-                <span style="color: var(--primary); font-weight: 700;">* Note:</span> 
-                The ZIP must contain the <code>.list</code> files to be updated and the source <code>.fscfai</code> files.
-            </p>
+            <div class="field-group" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 0.75rem; background: var(--background); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                <input type="checkbox" name="parse_right" id="parse_right" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
+                <label for="parse_right" style="margin-bottom: 0; cursor: pointer; font-weight: 600; color: var(--text-main); font-size: 0.9rem;">
+                    Parse from right to left (Find primary references and neighbors from the right)
+                </label>
+            </div>
             
-            <button type="submit" class="btn-standard" id="btn-lancer_traitement">
+            <button type="submit" class="btn-standard" id="btn-lancer_traitement" style="margin-top: 1.5rem;">
                 <span>Start Processing & Synchronization</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </button>
@@ -194,7 +194,7 @@
 
         <div class="card text-center mt-8" style="border: 2px solid var(--primary-light); background: var(--primary-light);">
             <p class="mb-4"><strong>Download ready</strong></p>
-            <a href="{% url 'download_zip' filename=output_path %}" class="btn btn-primary">
+            <a href="{% url 'download_zip' filename=output_path %}" class="btn btn-primary" id="download">
                 Download Results (.zip)
             </a>
         </div>
@@ -315,7 +315,11 @@
                     
                     if (ext === 'fscfai') {
                         const match = basename.match(/(\d{10})/);
-                        if (match) fscfai_refs[match[1]] = basename;
+                        if (match) {
+                            if(fscfai_refs[match[1]]) {
+                                console.log(`Duplicate reference ${match[1]} found.`);
+                            }
+                            fscfai_refs[match[1]] = basename;}
                     } else if (ext === 'list') {
                         listCount++;
                         filePromises.push(file.async('blob').then(content => {
@@ -345,10 +349,8 @@
                 dataTransfer.items.add(processedFile);
                 document.getElementById('zipped_fscfai_actual').files = dataTransfer.files;
 
-                // 3. Inject JSON data
                 document.getElementById('fscfai_json_input').value = JSON.stringify(fscfai_refs);
 
-                // 4. Submit the form normally
                 this.dataset.ready = "true";
                 this.submit();
 
@@ -358,6 +360,9 @@
                 btn.innerText = originalText;
                 btn.disabled = false;
             }
+        });
+        document.getElementById('download').addEventListener('click', function() {
+            this.enabled = false;
         });
     </script>
 

@@ -2,10 +2,11 @@ import openpyxl as op
 import re
 
 class excel_parser():
-    def __init__(self, excel_file_name, context):
+    def __init__(self, excel_file_name, context, parse_right=False):
         self.excel_file_name = excel_file_name
         self.context = context
         self.wb = None
+        self.parse_right = parse_right
 
     def load_excel(self):
         self.wb = op.load_workbook(self.excel_file_name, data_only=True)
@@ -25,7 +26,7 @@ class excel_parser():
         """
         for sheet in self.wb.worksheets:
             for row in sheet.iter_rows(max_col=26):
-                ref_cell = self.find_first_valid_ref_from_left(row)
+                ref_cell = self.find_first_valid_ref(row)
                 if ref_cell is None:
                     continue
                     
@@ -34,23 +35,29 @@ class excel_parser():
                     if ref_string in self.context.all_xml_references:
                         if ref_string not in self.context.excel_index:
                             self.context.excel_index[ref_string] = ref_cell
-                    # elif not self.check_right_neighbors(ref_cell):
-                    #     if not self.is_deleted(row, ref_cell):
-                    #         self.context.new_refs.add(ref_string)
                     else:
                         # Scan for other valid refs in the same row if multiple exist
                         found = False
                         refs = []
                         while not found:
                             refs.append(ref_string)
-                            ref_cell=self.find_first_valid_ref_from_left(row, refs) 
-                            ref_string=self.extract_reference_from_cell(ref_cell)
-                            #important changes
-                            if ref_cell is None or ref_cell.column>26: 
+                            ref_cell = self.find_first_valid_ref(row, refs) 
+                            if ref_cell is None:
                                 break
-                        if ref_string in self.context.all_xml_references:
-                            self.context.excel_index[ref_string] = ref_cell
-                            found = True
+                            ref_string = self.extract_reference_from_cell(ref_cell)
+                            if ref_string in self.context.all_xml_references:
+                                self.context.excel_index[ref_string] = ref_cell
+                                found = True
+
+    def find_first_valid_ref(self, row, jump_values=None):
+        cells = reversed(row) if self.parse_right else row
+        for cell in cells:
+            cur = self.extract_reference_from_cell(cell)
+            if jump_values and cur in jump_values:
+                continue
+            if cur is not None:
+                return cell
+        return None
 
     def search_by_ref(self, ref):
         ref = str(ref).strip()
@@ -98,19 +105,23 @@ class excel_parser():
         if cell is None or cell.value is None:
             return None
         value = str(cell.value).strip()
-        # Searches for exactly 10 digits anywhere in the string
         match = re.search(r"\d{10}", value)
         if match:
             return match.group(0)
         return None
 
+    def check_neighbors_detailed(self, cell):
+        if self.parse_right:
+            return self.check_right_neighbors_4_cells_detailed(cell)
+        else:
+            return self.check_left_neighbors_4_cells_detailed(cell)
 
     def check_left_neighbors_4_cells_detailed(self, cell):
         best_candidate = {
             "new_reference_detected": None,
-            "left_neighbor_source_cell": None,
-            "left_neighbor_distance": None,
-            "raw_left_neighbor_value": None
+            "neighbor_source_cell": None,
+            "neighbor_distance": None,
+            "raw_neighbor_value": None
         }
         for i in range(1, 9):
             if cell.column <= i:
@@ -119,48 +130,50 @@ class excel_parser():
             reference = self.extract_reference_from_cell(left_cell)
             if reference is not None:
                 best_candidate["new_reference_detected"] = reference
-                best_candidate["left_neighbor_source_cell"] = left_cell.coordinate
-                best_candidate["left_neighbor_distance"] = i
+                best_candidate["neighbor_source_cell"] = left_cell.coordinate
+                best_candidate["neighbor_distance"] = i
+                best_candidate["raw_neighbor_value"] = str(left_cell.value).strip()
         return best_candidate
 
-    def check_right_neighbors(self, cell):
+    def check_right_neighbors_4_cells_detailed(self, cell):
+        best_candidate = {
+            "new_reference_detected": None,
+            "neighbor_source_cell": None,
+            "neighbor_distance": None,
+            "raw_neighbor_value": None
+        }
         for i in range(1, 9):
-            if cell.column <= i:
-                continue
-            right_cell = cell.offset(row=0, column=+i)
-            reference = self.extract_reference_from_cell(right_cell)
-            if reference is not None:
-                return True
-        return False
-
-    def find_first_valid_ref_from_left(self, row, jump_values=None):
-        for cell in row:
-            cur = self.extract_reference_from_cell(cell)
-            if jump_values and cur in jump_values:
-                continue
-            if cur is not None:
-                return cell
-        return None
+            try:
+                right_cell = cell.offset(row=0, column=i)
+                reference = self.extract_reference_from_cell(right_cell)
+                if reference is not None:
+                    best_candidate["new_reference_detected"] = reference
+                    best_candidate["neighbor_source_cell"] = right_cell.coordinate
+                    best_candidate["neighbor_distance"] = i
+                    best_candidate["raw_neighbor_value"] = str(right_cell.value).strip()
+            except:
+                break
+        return best_candidate
 
     def row_contains_red_cell(self, row, max_col=None):
         for cell in row:
             if max_col and cell.column > max_col:
-                break
-            fill = cell.fill
-            if str(cell.value).lower() in ["carryover", "traite", "", "treated"] and not (hasattr(cell.font, 'strike') and cell.font.strike):
-                break
-            if not fill:
-                continue
-                
-            if hasattr(fill, 'start_color') and fill.start_color:
-                color = str(fill.start_color.rgb).upper()
-                if color in ["FFFF0000", "FF0000"]:
-                    return True
-                if fill.start_color.index == 2:
-                    return True
+            
+                fill = cell.fill
+                if str(cell.value).lower() in ["carryover", "traite", "", "treated"] and not (hasattr(cell.font, 'strike') and cell.font.strike):
+                    break
+                if not fill:
+                    continue
+                    
+                if hasattr(fill, 'start_color') and fill.start_color:
+                    color = str(fill.start_color.rgb).upper()
+                    if color in ["FFFF0000", "FF0000"]:
+                        return True
+                    if fill.start_color.index == 2:
+                        return True
         return False
 
-   
+
         # for cell in row:
         #     fill = getattr(cell, "fill", None)
 
