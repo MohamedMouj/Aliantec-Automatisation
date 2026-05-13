@@ -34,10 +34,13 @@ def index(request):
             extract_path.mkdir(exist_ok=True)
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_path)
-            
+
+            exctract_old_path = extract_path / "fscf" / 'OLD'
+            exctract_new_path = extract_path / "fscf" / 'NEW'
             processor = CompareProcess(
                 excel_file=str(excel_path),
-                folder_path=str(extract_path)
+                old_folder=str(exctract_old_path),
+                new_folder=str(exctract_new_path)
             )
             results = processor.start()
             

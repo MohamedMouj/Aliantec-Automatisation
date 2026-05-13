@@ -13,21 +13,21 @@ class ExcelHelper:
 
     def get_all_ref_couples(self):
         data_list=[]
-        sheet = self.wb[self.wb.sheetnames[0]]
-        for row in sheet.iter_rows():
-            data=dict()
-            ref=self.find_first_valid_ref_from_left(row)
-            if ref is not None:
-                data["OLD"]=self.extract_reference_from_cell(ref)    
-                ref=self.find_first_valid_ref_from_left(row, data.get("OLD"))
+        for sheet in self.wb.worksheets:
+            for row in sheet.iter_rows():
+                data=dict()
+                ref=self.find_first_valid_ref_from_left(row)
                 if ref is not None:
-                    data["NEW"]=self.extract_reference_from_cell(ref) 
+                    data["NEW"]=self.extract_reference_from_cell(ref)    
+                    ref=self.find_first_valid_ref_from_left(row, [data.get("NEW")])
+                    if ref is not None:
+                        data["OLD"]=self.extract_reference_from_cell(ref) 
+                    else:
+                        data["OLD"]=None
                 else:
+                    data["OLD"]=None
                     data["NEW"]=None
-            else:
-                data["OLD"]=None
-                data["NEW"]=None
-            data_list.append(data.copy())
+                data_list.append(data.copy())
         return data_list
             
     def extract_reference_from_cell(self, cell):
@@ -48,9 +48,11 @@ class ExcelHelper:
         return None
 
     def find_first_valid_ref_from_left(self, row, jump_values=None):
+        aux=True
         for cell in row:
             cur = self.extract_reference_from_cell(cell)
-            if jump_values and cur in jump_values:
+            if jump_values and cur in jump_values and aux:
+                aux=False
                 continue
             if cur is not None:
                 return cell
