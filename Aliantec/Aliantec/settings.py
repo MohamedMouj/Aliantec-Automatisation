@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'Listes_Types',
     'FSCFAI_Compare',
     'Listing_Devices',
+    'ExtractionVIN',
+    'Extraction_SM',
 ]
 
 MIDDLEWARE = [
