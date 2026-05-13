@@ -12,13 +12,30 @@ class DevicesProcess:
         self.excel_helper = ExcelHelper(self.output_file)
 
     def normalize_line(self, line):
-        tokens=[]
+        tokens=dict()
         line=line[-38:].strip()
         token = re.split(r"\s+", line.strip())#len(token[1].strip())==2 and token[1]!="PT"
-   
-        tokens.append(token[0].strip())
-        tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
-        tokens.append(token[-1].strip())
+        
+        a=token[-1].strip()
+        if a.startswith("IC"):
+            tokens=[]
+            tokens.append("IC")
+            tokens.append(token[0].strip())
+            tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
+            tokens.append(a)
+        elif a.startswith("E"):
+            tokens=[]
+            tokens.append("E")
+            tokens.append(token[0].strip())
+            tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
+            tokens.append(a)
+        else:
+            tokens=[]
+            tokens.append("others")
+            tokens.append(token[0].strip())
+            tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
+            tokens.append(a)
+        
  
         return tokens#[t for t in tokens if t and t != '\n' and t!='*']
         # tokens=dict()
@@ -40,12 +57,13 @@ class DevicesProcess:
             return False
             
         normalized_data = []
-        for filename, lines in data.items():
-            for line in lines:
+        for filename, file_data in data.items():
+            fuseaux=file_data[0]
+            for line in file_data[1:]:
                 if line.strip():
                     nor = self.normalize_line(line)
                     if nor:
-                        normalized_data.append([filename, nor])
+                        normalized_data.append([fuseaux, filename] + nor)
         # c=0
         # for i in normalized_data:
         #     c+=1

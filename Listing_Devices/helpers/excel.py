@@ -9,11 +9,16 @@ class ExcelHelper:
 
     def write_data_to_excel(self, data):
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "All Devices"
+        ws_E = wb.create_sheet("E")
+        ws_IC = wb.create_sheet("IC")
+        ws_others = wb.create_sheet("Others")
+        ws_E.append(["Fuseaux","File Name", "No Case", "Colour Conn", "APPAREIL REP"])
+        ws_IC.append(["Fuseaux","File Name", "No Case", "Colour Conn", "APPAREIL REP"])
+        ws_others.append(["Fuseaux","File Name", "No Case", "Colour Conn", "APPAREIL REP"])
+        wb.remove(wb.get_sheet_by_name("Sheet"))
+
         
         # Header with bold/standard styling
-        ws.append(["File Name", "No Case", "Colour Conn", "APPAREIL REP"])
         
         # Define high-readability fills (soft versions of the requested colors)
         red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")        
@@ -25,8 +30,10 @@ class ExcelHelper:
         color_index = -1
         
         for row in data:
-            filename = row[0]
-            tokens = row[1]
+            fuseaux = row[0]
+            filename = row[1]
+            sheet_name= row[2]
+            tokens = row[3:]
             
             # Change color only when filename changes
             if filename != prev_file:
@@ -37,17 +44,21 @@ class ExcelHelper:
             
             # Prepare row data
             if isinstance(tokens, list):
-                row_data = [filename] + tokens
-            else:
-                row_data = [filename, tokens]
-            
-            # Append row
-            ws.append(row_data)
-            
-            # Apply color to the newly added row
-            current_row_idx = ws.max_row
-            for cell in ws[current_row_idx]:
-                cell.fill = current_fill
+                if "IC"==sheet_name:
+                    ws_IC.append([fuseaux]+[filename] + tokens)
+                    current_row_idx = ws_IC.max_row
+                    for cell in ws_IC[current_row_idx]:
+                        cell.fill = current_fill
+                elif "E"==sheet_name:
+                    ws_E.append([fuseaux]+[filename] + tokens)
+                    current_row_idx = ws_E.max_row
+                    for cell in ws_E[current_row_idx]:
+                        cell.fill = current_fill
+                elif "others"==sheet_name:
+                    ws_others.append([fuseaux]+[filename] + tokens)
+                    current_row_idx = ws_others.max_row
+                    for cell in ws_others[current_row_idx]:
+                        cell.fill = current_fill 
                 
         wb.save(self.excel_file)
     

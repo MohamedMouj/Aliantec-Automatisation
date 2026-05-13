@@ -12,7 +12,7 @@ class FsHelper:
         for f in self.fscfai_files:
             if not f.is_file():
                 continue
-            
+            fuseaux=f.parent.name
             aux = False
             is_special = True
             # # Fix for Windows Long Paths
@@ -41,7 +41,7 @@ class FsHelper:
                         
                     if not is_special:
                         if f.name not in data_list:
-                            data_list[f.name] = []
+                            data_list[f.name] = [fuseaux]
                         data_list[f.name].append(line.strip())
                         
                         
