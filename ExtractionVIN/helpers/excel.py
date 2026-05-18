@@ -34,12 +34,8 @@ class ExcelParser:
         if self.wb:
             self.wb.close()
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
+ 
     def extract_label(self, cell_value):
-        """Return a 5-char label from a cell, or None."""
         if cell_value is None:
             return None
         val = str(cell_value).strip()
@@ -53,24 +49,14 @@ class ExcelParser:
         return None
 
     def search_col_by_label(self, label):
-        """
-        Search the header row (row 1) of sheet_to_extract for a column
-        whose header starts with the first 3 chars of label.
-        Returns the 1-based column index, or None.
-        """
         prefix = label[:3]
-        header_row = self.sheet_to_extract[1]  # openpyxl row 1 = first row
+        header_row = self.sheet_to_extract[1]  
         for cell in header_row:
             if cell.value is not None and str(cell.value).strip().startswith(prefix):
-                return cell.column  # 1-based
+                return cell.column  
         return None
 
     def find_vin_row(self, col_idx, label):
-        """
-        Search column col_idx (1-based) in sheet_to_extract for the
-        row whose value matches label[3:], stripping a leading '0' if present.
-        Returns the 1-based row index, or None.
-        """
         suffix = label[3:]
         if suffix.startswith("0"):
             suffix = suffix[1:]
@@ -80,17 +66,13 @@ class ExcelParser:
         ):
             cell = row[0]
             if cell.value is not None and str(cell.value).strip() == suffix:
-                return cell.row  # 1-based
+                return cell.row  
         return None
 
     def find_vin(self, row_idx):
-        """
-        Read column D (column 4, 1-based) of sheet_to_extract at row_idx.
-        Returns the VIN string, or None.
-        """
         if row_idx is None:
             return None
-        cell = self.sheet_to_extract.cell(row=row_idx, column=4)  # col D
+        cell = self.sheet_to_extract.cell(row=row_idx, column=4)  
         if cell.value is None or str(cell.value).strip() == "":
             return None
         return str(cell.value).strip()
@@ -100,24 +82,14 @@ class ExcelParser:
     # ------------------------------------------------------------------
 
     def start(self, output_path=None):
-        """
-        Iterate column D (col 4) of main_sheet.
-        For each label found, look up its VIN and write it into
-        column G (col 7) of the same row, skipping the first 2 rows.
-
-        Returns a list of dicts with processing results for the UI.
-        Saves the workbook to output_path (or self.excel_file_name if None).
-        """
         results = []
 
         for row in self.main_sheet.iter_rows():
             row_number = row[0].row
 
-            # openpyxl rows are 1-based; skip header rows 1 and 2
             if row_number <= 2:
                 continue
 
-            # Column D = index 3 in the row tuple (0-based)
             d_cell = row[3]  # column D
             lab = self.extract_label(d_cell.value)
 
@@ -139,7 +111,6 @@ class ExcelParser:
             vin = self.find_vin(vin_row)
 
             if vin:
-                # Write VIN into column G (col 7) of main_sheet
                 self.main_sheet.cell(row=row_number, column=7).value = vin
                 results.append({
                     "row": row_number,
