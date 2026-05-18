@@ -30,7 +30,34 @@ def index(request):
             extract_path = request_temp / 'extracted'
             extract_path.mkdir(exist_ok=True)
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_path)
+                for zip_info in zip_ref.filelist:
+                    if zip_info.is_dir():
+                        continue
+                        
+                    # Reconstruct the folder path
+                    rel_dir = Path(zip_info.filename).parent
+                    target_dir = extract_path / rel_dir
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Handle the long filename issue
+                    original_name = Path(zip_info.filename).name
+                    if len(original_name) > 50:
+                        stem = Path(original_name).stem
+                        ext = Path(original_name).suffix
+                        # Many FSCFAI files have lots of extra tags after a space
+                        if " " in stem:
+                            stem = stem.split(" ")[0]
+                        # Hard truncate if it's still insanely long
+                        if len(stem) > 60:
+                            stem = stem[:60]
+                        new_name = stem + ext
+                    else:
+                        new_name = original_name
+                        
+                    # Extract to the modified path
+                    target_path = target_dir / new_name
+                    with zip_ref.open(zip_info) as source, open(str(target_path), "wb") as target:
+                        shutil.copyfileobj(source, target)
             
             
             excel_path = request_temp / 'all_devices.xlsx'

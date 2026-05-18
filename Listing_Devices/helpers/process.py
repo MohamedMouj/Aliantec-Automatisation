@@ -17,25 +17,27 @@ class DevicesProcess:
         token = re.split(r"\s+", line.strip())#len(token[1].strip())==2 and token[1]!="PT"
         
         a=token[-1].strip()
-        if a.startswith("IC"):
-            tokens=[]
-            tokens.append("IC")
-            tokens.append(token[0].strip())
-            tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
-            tokens.append(a)
-        elif a.startswith("E"):
-            tokens=[]
-            tokens.append("E")
-            tokens.append(token[0].strip())
-            tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
-            tokens.append(a)
-        else:
-            tokens=[]
-            tokens.append("others")
-            tokens.append(token[0].strip())
-            tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
-            tokens.append(a)
-        
+        try:
+            if a.startswith("IC"):
+                tokens=[]
+                tokens.append("IC")
+                tokens.append(token[0].strip())
+                tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
+                tokens.append(a)
+            elif a.startswith("E"):
+                tokens=[]
+                tokens.append("E")
+                tokens.append(token[0].strip())
+                tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
+                tokens.append(a)
+            else:
+                tokens=[]
+                tokens.append("others")
+                tokens.append(token[0].strip())
+                tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
+                tokens.append(a)
+        except Exception as e:
+            print("Error processing line:", line, e)
  
         return tokens#[t for t in tokens if t and t != '\n' and t!='*']
         # tokens=dict()
