@@ -8,29 +8,42 @@ class FsHelper:
 
     def find_fscfai_files(self, ref):
         data_list = dict()
-        aux=False
-        found=False
+        
         for f in self.fscfai_files:
             if not f.is_file():
                 continue
             match = re.search(r"(\d{10})", f.name)
             if match and match.group(1) == ref:
-                found=True
                 with open(f, 'r') as file_content: 
                     for line in file_content:
-                        startwith=line[0] in ['=', '+', '*', '-', '/', '@', '#', '%', '&', '^', '<', '>', '!', '?']
+                        if line.startswith("*E"): break
+                        if line[0] in ['=', '+', '*', '-', '/', '@', '#', '%', '&', '^', '<', '>', '!', '?']: continue
 
                         if line.strip().startswith('*') and data_list.get(f.name):
                             data_list[f.name][-1] += "\n"+line
                             continue
-                        if line and startwith and aux:
-                            break
-                        if line and not startwith:
+
+                        if line:
                             if f.name not in data_list:
                                 data_list[f.name] = []
                             data_list[f.name].append(line)
-                            aux=True
+                            
         return data_list if data_list else None
+
+    def write_to_txt_file(self, list_data, filename):
+        output_dir = Path(self.folder_path).parent.parent / "output"
+        output_dir.mkdir(exist_ok=True)
+        output_file = output_dir / filename
+
+        # Clean the lines: keep only actual lines, completely removing "NOT FOUND" placeholders
+        cleaned_lines = [line.strip() for line in list_data if "NOT FOUND" not in line]
+
+        with open(str(output_file), "w", encoding='utf-8') as file_content: 
+            file_content.write("\n".join(cleaned_lines))
+            
+        print(output_file)
+        
+
 
     # def load_fscfai(self):
     #     self.fscfai_files = list(Path(self.folder_path).rglob("*.fscfai"))

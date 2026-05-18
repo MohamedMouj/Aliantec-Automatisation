@@ -6,6 +6,8 @@ from pathlib import Path
 from django.shortcuts import render
 from django.conf import settings
 from .helpers.process import CompareProcess
+import base64
+import io
 
 def index(request):
     results = None
@@ -35,8 +37,8 @@ def index(request):
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_path)
 
-            exctract_old_path = extract_path / "fscf" / 'OLD'
-            exctract_new_path = extract_path / "fscf" / 'NEW'
+            exctract_old_path = extract_path / uploaded_zip.name.split('.')[0] / 'OLD'
+            exctract_new_path = extract_path / uploaded_zip.name.split('.')[0] / 'NEW'
             processor = CompareProcess(
                 excel_file=str(excel_path),
                 old_folder=str(exctract_old_path),
@@ -44,9 +46,25 @@ def index(request):
             )
             results = processor.start()
             
+            # Zip the output directory
+            import base64
+            import io
+            
+            output_dir = extract_path / "output"
+            zip_data = None
+            if output_dir.exists():
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for root, _, files in os.walk(output_dir):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            zf.write(file_path, os.path.relpath(file_path, output_dir))
+                zip_data = base64.b64encode(zip_buffer.getvalue()).decode('utf-8')
+        except Exception as e:
+            return render(request, 'FSCFAI_Compare/main.html', {'error': str(e)})
         finally:
             if 'processor' in locals():
-                processor.close()
+                pass # processor.close() not implemented
             shutil.rmtree(request_temp, ignore_errors=True)
 
-    return render(request, 'FSCFAI_Compare/main.html', {'results': results})
+    return render(request, 'FSCFAI_Compare/main.html', {'results': results, 'zip_data': locals().get('zip_data')})

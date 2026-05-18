@@ -4,7 +4,7 @@ import re
 class ExcelHelper:
     def __init__(self, excel_file):
         self.excel_file = excel_file
-        self.wb = openpyxl.load_workbook(self.excel_file, read_only=True)
+        self.wb = openpyxl.load_workbook(self.excel_file, read_only=True, data_only=True)
         self.data=None
 
     def close(self):
@@ -17,16 +17,15 @@ class ExcelHelper:
             for row in sheet.iter_rows():
                 data=dict()
                 ref=self.find_first_valid_ref_from_left(row)
+                if ref is None:
+                    continue
+                data["OLD"]=self.extract_reference_from_cell(ref)    
+                ref=self.find_first_valid_ref_from_left(row, [data.get("OLD")])
                 if ref is not None:
-                    data["NEW"]=self.extract_reference_from_cell(ref)    
-                    ref=self.find_first_valid_ref_from_left(row, [data.get("NEW")])
-                    if ref is not None:
-                        data["OLD"]=self.extract_reference_from_cell(ref) 
-                    else:
-                        data["OLD"]=None
+                    data["NEW"]=self.extract_reference_from_cell(ref) 
                 else:
-                    data["OLD"]=None
                     data["NEW"]=None
+                
                 data_list.append(data.copy())
         return data_list
             
