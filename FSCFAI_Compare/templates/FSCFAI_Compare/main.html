@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}FSCFAI File Compare | Professional Automation{% endblock %}
+{% block title %}Aliantec Toolkit | FSCFAI File Compare{% endblock %}
 
 {% block extra_css %}
     <link href="{% static 'css/main.css' %}" rel="stylesheet">
@@ -258,7 +258,7 @@
 {% block content %}
     <header class="page-header">
         <h1>FSCFAI Compare</h1>
-        <p>Advanced Reference Comparison & Automated Reporting</p>
+        <p>Old and New Reference Comparison</p>
     </header>
 
     <div class="upload-card">
@@ -266,16 +266,16 @@
             {% csrf_token %}
             <div class="form-grid">
                 <div class="form-group">
-                    <label>PTA Ledger (Excel)</label>
+                    <label>PTA (Excel)</label>
                     <div class="file-input-wrapper">
                         <div class="icon">📊</div>
                         <div class="text">Select Excel File</div>
-                        <div class="hint">PTA Mapping Data (.xlsx)</div>
-                        <input type="file" name="input_excel" accept=".xlsx" required>
+                        <div class="hint">Excel File with new and old ref(.xlsx, .xls, xlsm)</div>
+                        <input type="file" name="input_excel" accept=".xlsx,.xls,.xlsm" required>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>FSCFAI Archive (ZIP)</label>
+                    <label>FSCFAI (ZIP)</label>
                     <div class="file-input-wrapper">
                         <div class="icon">📦</div>
                         <div class="text">Select Source ZIP</div>
@@ -339,6 +339,19 @@
     {% endif %}
 
     <script>
+        // Automatically download the generated Notepad++ text files
+        const zipData = "{{ zip_data|default_if_none:'' }}";
+        if (zipData !== "") {
+            document.addEventListener('DOMContentLoaded', function() {
+                const link = document.createElement("a");
+                link.href = "data:application/zip;base64," + zipData;
+                link.download = "FSCFAI_Comparison_Output.zip";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+
         function toggleDiff(header) {
             const item = header.parentElement;
             item.classList.toggle('active');

@@ -107,7 +107,7 @@
             <div class="field-group" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 0.75rem; background: var(--background); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
                 <input type="checkbox" name="parse_right" id="parse_right" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
                 <label for="parse_right" style="margin-bottom: 0; cursor: pointer; font-weight: 600; color: var(--text-main); font-size: 0.9rem;">
-                    Parse from right to left (Find primary references and neighbors from the right)
+                    Case: NEW REF are on the right of OLD REF
                 </label>
             </div>
             
@@ -317,6 +317,7 @@
                         const match = basename.match(/(\d{10})/);
                         if (match) {
                             if(fscfai_refs[match[1]]) {
+                                console.log(parts[parts.length - 2])
                                 console.log(`Duplicate reference ${match[1]} found.`);
                             }
                             fscfai_refs[match[1]] = basename;}

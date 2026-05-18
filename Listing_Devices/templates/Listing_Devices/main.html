@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Aliantec Toolkit | Listing Devices{% endblock %}
+
 {% block extra_css %}
     <style>
         /* Processing Overlay Styles */
@@ -61,7 +63,7 @@
 {% block content %}
     <header class="page-header">
         <h1>Device Listing</h1>
-        <p>Extract comprehensive device data from FSCFAI archives into structured Excel inventories.</p>
+        <p>Extract comprehensive device data from FSCFAI files into structured Excel inventories.</p>
     </header>
 
     {% if error %}

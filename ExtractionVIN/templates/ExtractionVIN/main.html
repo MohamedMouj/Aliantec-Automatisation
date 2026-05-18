@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Aliantec Toolkit | Extraction SM{% endblock %}
+{% block title %}Aliantec Toolkit | Extraction VIN{% endblock %}
 
 {% block extra_css %}
     <link href="{% static 'css/main.css' %}" rel="stylesheet">
@@ -109,6 +109,7 @@
             box-shadow: 0 8px 20px var(--primary-glow);
         }
 
+        /* Processing Overlay */
         #processing-overlay {
             display: none;
             position: fixed;
@@ -136,6 +137,7 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Results Section */
         .results-container {
             margin-top: 3rem;
             max-width: 900px;
@@ -217,8 +219,16 @@
             font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
+        }
+
+        .status-ok {
             background: #dcfce7;
             color: #166534;
+        }
+
+        .status-warn {
+            background: #fef3c7;
+            color: #92400e;
         }
 
         .summary-bar {
@@ -241,7 +251,7 @@
         .summary-stat .number {
             font-size: 1.75rem;
             font-weight: 700;
-            color: #16a34a;
+            color: var(--primary);
         }
 
         .summary-stat .label {
@@ -251,6 +261,10 @@
             letter-spacing: 0.04em;
         }
 
+        .summary-stat.success .number { color: #16a34a; }
+        .summary-stat.warning .number { color: #d97706; }
+
+        /* Error Alert */
         .error-alert {
             background: #fee2e2;
             color: #991b1b;
@@ -277,8 +291,8 @@
 
 {% block content %}
     <header class="page-header">
-        <h1>Extraction SM</h1>
-        <p>Upload an Excel file to extract SM values from "Sommaire" sheet</p>
+        <h1>Extraction VIN</h1>
+        <p>Upload an Excel file to extract and map VIN codes</p>
     </header>
 
     <div class="upload-card">
@@ -289,7 +303,7 @@
                 <div class="file-input-wrapper">
                     <div class="icon">📊</div>
                     <div class="text">Select Excel File</div>
-                    <div class="hint">Must contain a "Sommaire" sheet (.xlsx)</div>
+                    <div class="hint">Must contain sheets "Validation Web" and "Extraction VIN" (.xlsx)</div>
                     <input type="file" name="input_excel" accept=".xlsx,.xls,.xlsm" required>
                 </div>
             </div>
@@ -303,7 +317,7 @@
     <div id="processing-overlay">
         <div class="spinner"></div>
         <h2 style="color: white; margin-bottom: 0.5rem;">Processing Extraction...</h2>
-        <p style="color: rgba(255,255,255,0.7);">Reading Sommaire sheet and extracting values.</p>
+        <p style="color: rgba(255,255,255,0.7);">Reading sheets and mapping VIN codes.</p>
     </div>
 
     {% if error_msg %}
@@ -321,25 +335,36 @@
         <div class="results-header">
             <h2 style="font-weight: 700;">Extraction Results</h2>
             {% if download_name %}
-            <a href="{% url 'extraction_sm_download' %}" class="btn-download">
+            <a href="{% url 'extraction_vin_download' %}" class="btn-download">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Download {{ download_name }}
             </a>
             {% endif %}
         </div>
 
+        {% with ok_count=0 warn_count=0 %}
         <div class="summary-bar">
             <div class="summary-stat">
                 <div class="number">{{ results|length }}</div>
-                <div class="label">Values Extracted</div>
+                <div class="label">Total Processed</div>
+            </div>
+            <div class="summary-stat success">
+                <div class="number" id="ok-count">—</div>
+                <div class="label">Matched</div>
+            </div>
+            <div class="summary-stat warning">
+                <div class="number" id="warn-count">—</div>
+                <div class="label">Warnings</div>
             </div>
         </div>
+        {% endwith %}
 
         <table class="results-table">
             <thead>
                 <tr>
                     <th>Row</th>
-                    <th>Extracted Value</th>
+                    <th>Label</th>
+                    <th>VIN</th>
                     <th>Status</th>
                     <th>Message</th>
                 </tr>
@@ -348,8 +373,13 @@
                 {% for r in results %}
                 <tr>
                     <td>{{ r.row }}</td>
-                    <td><strong>{{ r.value }}</strong></td>
-                    <td><span class="status-badge">{{ r.status }}</span></td>
+                    <td><strong>{{ r.label }}</strong></td>
+                    <td>{{ r.vin|default:"—" }}</td>
+                    <td>
+                        <span class="status-badge {% if r.status == 'ok' %}status-ok{% else %}status-warn{% endif %}">
+                            {{ r.status }}
+                        </span>
+                    </td>
                     <td>{{ r.message }}</td>
                 </tr>
                 {% endfor %}
@@ -359,16 +389,18 @@
     {% elif results is not None %}
     <section class="results-container" style="text-align: center; padding: 4rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); margin-top: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
         <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
-        <h3 style="font-weight: 700; color: var(--text-main);">No empty column found</h3>
-        <p style="color: var(--text-muted);">Could not find an empty column to write extracted values into.</p>
+        <h3 style="font-weight: 700; color: var(--text-main);">No labels found</h3>
+        <p style="color: var(--text-muted);">The "Validation Web" sheet did not contain any recognizable labels in column D.</p>
     </section>
     {% endif %}
 
     <script>
+        // Show overlay on submit
         document.getElementById('upload-form').addEventListener('submit', function() {
             document.getElementById('processing-overlay').style.display = 'flex';
         });
 
+        // Add file name display
         document.querySelectorAll('input[type="file"]').forEach(input => {
             input.addEventListener('change', function() {
                 if (this.files && this.files[0]) {
@@ -380,5 +412,19 @@
                 }
             });
         });
+
+        // Calculate summary counts from the rendered table
+        (function() {
+            const badges = document.querySelectorAll('.status-badge');
+            let ok = 0, warn = 0;
+            badges.forEach(b => {
+                if (b.textContent.trim() === 'ok') ok++;
+                else warn++;
+            });
+            const okEl = document.getElementById('ok-count');
+            const warnEl = document.getElementById('warn-count');
+            if (okEl) okEl.textContent = ok;
+            if (warnEl) warnEl.textContent = warn;
+        })();
     </script>
 {% endblock %}
