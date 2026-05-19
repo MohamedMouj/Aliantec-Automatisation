@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta cache-control="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>{% block title %}Aliantec Automation Toolkit{% endblock %}</title>
     
     <!-- Google Fonts: Inter & Outfit -->
@@ -26,9 +29,10 @@
             </a>
             
             <nav class="nav-links">
-                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Applications</a>
-                <!-- <a href="/listes_types/" class="nav-link {% if 'listes_types' in request.path %}active{% endif %}">Listes-Types</a>
-                <a href="/FSCFAI_Compare/" class="nav-link {% if 'FSCFAI_Compare' in request.path %}active{% endif %}">FSCF-Compare</a> -->
+                {% if user.is_authenticated %}
+                    <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Applications</a>
+                    <a href="{% url 'logout' %}" class="nav-link">Logout</a>
+                {% endif %}
                 
                 <button id="theme-toggle" class="theme-toggle" title="Toggle Day/Night Mode">
                     <svg id="theme-toggle-dark-icon" class="hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
