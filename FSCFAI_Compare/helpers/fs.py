@@ -16,6 +16,7 @@ class FsHelper:
             if match and match.group(1) == ref:
                 with open(f, 'r') as file_content: 
                     for line in file_content:
+                        if not (line.strip()) : continue
                         if line.startswith("*E"): break
                         if line[0] in ['=', '+', '*', '-', '/', '@', '#', '%', '&', '^', '<', '>', '!', '?']: continue
 

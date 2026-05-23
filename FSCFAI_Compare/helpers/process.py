@@ -44,7 +44,6 @@ class CompareProcess:
             new_fscfai = self.fs_new.find_fscfai_files(new_ref)
 
             if old_fscfai and new_fscfai:
-                print(f"DEBUG: Match found for {old_ref} vs {new_ref}")
                 list1, list2, f1, f2 = self.match(old_fscfai, new_fscfai)
 
                 self.fs_old.write_to_txt_file(list1, f1)
@@ -59,11 +58,10 @@ class CompareProcess:
                 })
             else:
                 if not old_fscfai:
-                    print(f"DEBUG: Missing FSCFAI for OLD ref: {old_ref}")
+
+                    pass
                 if not new_fscfai:
-                    print(f"DEBUG: Missing FSCFAI for NEW ref: {new_ref}")
-        
-        print(f"DEBUG: Total results generated: {len(results)}")
+                    pass
         return results
             
     def generate_diff_table(self, list1, list2, f1, f2):
@@ -117,7 +115,6 @@ class CompareProcess:
         tmp_new = []
 
         unmatched_old_1 = []
-        # PASS 1: Exact Match for ALL items first
         for item in old_lines:
             elems = item.split("  ")
             elems = [i for i in elems if i.strip() != ""]
@@ -125,6 +122,7 @@ class CompareProcess:
                 continue
             
             found = False
+            
             for item2 in new_lines:
                 elems2 = item2.split("  ")
                 elems2 = [i for i in elems2 if i.strip() != ""]
@@ -140,8 +138,8 @@ class CompareProcess:
             if not found:
                 unmatched_old_1.append(item)
 
+
         unmatched_old_2 = []
-        # PASS 2: Fuzzy prefix match for remaining items
         for item in unmatched_old_1:
             elems = item.split("  ")
             elems = [i for i in elems if i.strip() != ""]
@@ -153,8 +151,7 @@ class CompareProcess:
                 if not elems2: continue
                 
                 if (len(elems) > 4 and len(elems2) > 4 and 
-                ((len(elems[0].strip())>=4 and elems[0].strip()[:4] == elems2[0].strip()[:4]) or 
-                 (len(elems[0].strip())>=3 and elems[0].strip()[:3] == elems2[0].strip()[:3]))):
+                len(elems[0].strip())>=4 and elems[0].strip()[:4] == elems2[0].strip()[:4]):
                     tmp_old.append(item)
                     tmp_new.append(item2)
                     new_lines.remove(item2)
@@ -164,8 +161,30 @@ class CompareProcess:
             if not found:
                 unmatched_old_2.append(item)
 
+        test=[]
+        for item in unmatched_old_2:
+            elems = item.split("  ")
+            elems = [i for i in elems if i.strip() != ""]
+            
+            found = False
+            for item2 in new_lines:
+                elems2 = item2.split("  ")
+                elems2 = [i for i in elems2 if i.strip() != ""]
+                if not elems2: continue
+                
+                if (len(elems) > 4 and len(elems2) > 4 and 
+                (len(elems[0].strip())>=3 and elems[0].strip()[:3] == elems2[0].strip()[:3])):
+                    tmp_old.append(item)
+                    tmp_new.append(item2)
+                    new_lines.remove(item2)
+                    found = True
+                    break
+            if not found:
+                test.append(item)
+        
+        unmatched_old_2 = test
+
         unmatched_old_3 = []
-        # PASS 3: Secondary column match
         for item in unmatched_old_2:
             elems = item.split("  ")
             elems = [i for i in elems if i.strip() != ""]
@@ -189,7 +208,6 @@ class CompareProcess:
                 unmatched_old_3.append(item)
 
         unmatched_old_4 = []
-        # PASS 4: Final column match
         for item in unmatched_old_3:
             elems = item.split("  ")
             elems = [i for i in elems if i.strip() != ""]
@@ -211,12 +229,35 @@ class CompareProcess:
             
             if not found:
                 unmatched_old_4.append(item)
+        
+        test=[]
+        for item in unmatched_old_4:
+            elems = item.split("  ")
+            elems = [i for i in elems if i.strip() != ""]
+            
+            found = False
+            for item2 in new_lines:
+                elems2 = item2.split("  ")
+                elems2 = [i for i in elems2 if i.strip() != ""]
+                if not elems2: continue
+                
+                if (len(elems) > 5 and len(elems2) > 5 and 
+                elems[2].strip() == elems2[5].strip() and 
+                elems[4].strip() == elems2[-1].strip()):
+                    tmp_old.append(item)
+                    tmp_new.append(item2)
+                    new_lines.remove(item2)
+                    found = True
+                    break
+            
+            if not found:
+                test.append(item)
+        
+        unmatched_old_4 = test
 
         unmatched_final = []
-        # PASS 5: process.extractOne fallback
         for ritem in unmatched_old_4:
             extracted = process.extractOne(ritem, new_lines)
-            # Make sure we actually found a string, and it meets a minimum similarity score
             if extracted and extracted[0] and extracted[0] != "" and extracted[1] >= 85:
                 tmp_new.append(extracted[0])
                 tmp_old.append(ritem)
@@ -224,12 +265,10 @@ class CompareProcess:
             else:
                 unmatched_final.append(ritem)
                 
-        # What was not found in NEW
         for item in unmatched_final:
             tmp_old.append(item)
             tmp_new.append("NOT FOUND IN NEW FILE")
 
-        # What was not found in OLD
         for item2 in new_lines:
             tmp_new.append(item2)
             tmp_old.append("NOT FOUND IN OLD FILE")
