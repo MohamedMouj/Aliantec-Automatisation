@@ -271,7 +271,7 @@
             border: 1px solid #fecaca;
             border-radius: var(--radius);
             padding: 1.25rem 1.5rem;
-            margin-top: 2rem;
+            margin-bottom: 2rem;
             max-width: 600px;
             margin-left: auto;
             margin-right: auto;
@@ -294,6 +294,15 @@
         <h1>Extraction VIN</h1>
         <p>Upload an Excel file to extract and map VIN codes</p>
     </header>
+
+    {% if error_msg %}
+    <div class="error-alert">
+        <div>
+            <strong>Error</strong>
+            <p style="margin-top: 0.25rem;">{{ error_msg }}</p>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="upload-card">
         <form id="upload-form" method="post" enctype="multipart/form-data">
@@ -319,16 +328,6 @@
         <h2 style="color: white; margin-bottom: 0.5rem;">Processing Extraction...</h2>
         <p style="color: rgba(255,255,255,0.7);">Reading sheets and mapping VIN codes.</p>
     </div>
-
-    {% if error_msg %}
-    <div class="error-alert">
-        <div class="icon">⚠️</div>
-        <div>
-            <strong>Error</strong>
-            <p style="margin-top: 0.25rem;">{{ error_msg }}</p>
-        </div>
-    </div>
-    {% endif %}
 
     {% if results %}
     <section class="results-container">

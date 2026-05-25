@@ -36,38 +36,62 @@ class ExcelParser:
 
  
     def extract_label(self, cell_value):
+        matched=[]
         if cell_value is None:
             return None
         val = str(cell_value).strip()
         if val == "":
             return None
-        match = re.search(r"[A-Z0-9]{5}", val)
+        
+        match = re.search(r"\b(?=[A-Z]*[0-9])[A-Z0-9]{5}\b", val)
         if match:
-            return match.group(0)
-        if "Générique" in val:
-            return "DXD00"
-        return None
+            for mch in re.finditer(r"\b(?=[A-Z]*[0-9])[A-Z0-9]{5}\b", val):
+                matched.append(mch.group())
+            return matched
+        elif "Générique" in val:
+            matched.append("DXD00")
+            return matched
+        else:
+            return None
 
     def search_col_by_label(self, label):
-        prefix = label[:3]
-        header_row = self.sheet_to_extract[1]  
-        for cell in header_row:
-            if cell.value is not None and str(cell.value).strip().startswith(prefix):
-                return cell.column  
-        return None
+        header_row = self.sheet_to_extract[1] 
+        cols=[] 
+        for lab in label:
+            prefix = lab[:3]
+            
+            for cell in header_row:
+                if cell.value is not None and str(cell.value).strip().startswith(prefix):
+                    cols.append(cell.column)
+                    continue
+        return cols if cols else None
 
-    def find_vin_row(self, col_idx, label):
-        suffix = label[3:]
-        if suffix.startswith("0"):
-            suffix = suffix[1:]
+    def find_vin_row(self, cols, label):
+        rows=[]
+        duplicate_rows=[]
 
-        for row in self.sheet_to_extract.iter_rows(
-            min_col=col_idx, max_col=col_idx
-        ):
-            cell = row[0]
-            if cell.value is not None and str(cell.value).strip() == suffix:
-                return cell.row  
-        return None
+        map_label_col = {col: lab[3:] for col, lab in zip(cols, label)}
+       
+
+        for col, label in map_label_col.items():
+            if len(label)>1 and label.startswith("0"):
+                label = label[1:]
+                if len(label)>1 and label.startswith("0"):
+                    label = label[1:]
+            #--------------------------------------------
+            for row in self.sheet_to_extract.iter_rows(
+                min_col=col, max_col=col
+            ):
+                cell = row[0]
+                if cell.value is not None and str(cell.value).strip() == label:
+                    rows.append(cell.row)
+                    if col==cols[-1]:
+                            duplicate_rows.append(cell.row)
+
+
+        
+        rows=[r for r in rows if r in duplicate_rows]
+        return rows[0] if rows else None
 
     def find_vin(self, row_idx):
         if row_idx is None:
@@ -76,10 +100,6 @@ class ExcelParser:
         if cell.value is None or str(cell.value).strip() == "":
             return None
         return str(cell.value).strip()
-
-    # ------------------------------------------------------------------
-    # Main process
-    # ------------------------------------------------------------------
 
     def start(self, output_path=None):
         results = []
@@ -93,40 +113,41 @@ class ExcelParser:
             d_cell = row[3]  # column D
             lab = self.extract_label(d_cell.value)
 
-            if not lab:
+            if not lab or len(lab) == 0:
                 continue
-
-            col = self.search_col_by_label(lab)
-            if col is None:
+            
+            labels=(", ").join(lab) if isinstance(lab, list) else lab if isinstance(lab, list) else lab
+            cols = self.search_col_by_label(lab)
+            if cols is None:
                 results.append({
                     "row": row_number,
-                    "label": lab,
+                    "label": labels,
                     "vin": None,
                     "status": "warn",
                     "message": f"No column found for label '{lab}'"
                 })
                 continue
 
-            vin_row = self.find_vin_row(col, lab)
+            vin_row = self.find_vin_row(cols, lab)
             vin = self.find_vin(vin_row)
 
             if vin:
                 self.main_sheet.cell(row=row_number, column=7).value = vin
                 results.append({
                     "row": row_number,
-                    "label": lab,
+                    "label": labels,
                     "vin": vin,
                     "status": "ok",
                     "message": "VIN written"
                 })
-            else:
-                results.append({
-                    "row": row_number,
-                    "label": lab,
-                    "vin": None,
-                    "status": "warn",
-                    "message": f"No VIN found for label '{lab}'"
-                })
+            # else:
+            #     results.append({
+            #         "row": row_number,
+            #         "label": labels,
+            #         "vin": None,
+            #         "status": "warn",
+            #         "message": f"No VIN found for label '{lab}'"
+            #     })
 
         save_path = output_path or self.excel_file_name
         self.wb.save(save_path)
@@ -135,7 +156,7 @@ class ExcelParser:
 
 # if __name__ == "__main__":
 #     excel = ExcelParser(
-#         r"C:\Users\User\OneDrive\Bureau\Validation Web (OV64 RHD - F10-2025).....xlsx"
+#         r"C:\Users\User\OneDrive\Bureau\testVIN. - Copy.xlsx"
 #     )
 #     excel.load_excel()
 #     results, _ = excel.start()

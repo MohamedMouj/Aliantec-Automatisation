@@ -31,11 +31,12 @@ class DevicesProcess:
                 tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
                 tokens.append(a)
             else:
-                tokens=[]
-                tokens.append("others")
-                tokens.append(token[0].strip())
-                tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
-                tokens.append(a)
+                if not(a.startswith("B") or a.startswith("T") or a.startswith("M") or a.startswith("F") or a.startswith("IDB") or a.startswith("P") or a.startswith("R") or a.startswith("S") or a[:3] in ["VSM", "UDB", "UFM"]):   
+                    tokens=[]
+                    tokens.append("others")
+                    tokens.append(token[0].strip())
+                    tokens.append(token[1].strip() if line.find(token[1].strip())<6   else "")
+                    tokens.append(a)
         except Exception as e:
             print("Error processing line:", line, e)
  

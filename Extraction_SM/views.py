@@ -1,17 +1,13 @@
-import os
+import io
 import shutil
 import uuid
 from pathlib import Path
 from django.shortcuts import render
-from django.http import FileResponse, Http404
+from django.http import FileResponse
 from .helpers.excel import ExcelParser
 
 
 def index(request):
-    results = None
-    error_msg = None
-    download_name = None
-
     if request.method == 'POST' and request.FILES.get('input_excel'):
         uploaded_excel = request.FILES['input_excel']
 
@@ -23,55 +19,40 @@ def index(request):
 
         parser = None
         try:
-            # Save uploaded file
+            # Save the uploaded file to the temp directory
             excel_path = request_temp / uploaded_excel.name
             with open(excel_path, 'wb+') as destination:
                 for chunk in uploaded_excel.chunks():
                     destination.write(chunk)
 
-            # Process
+            # Process the file
             parser = ExcelParser(str(excel_path))
             parser.load_excel()
 
             output_name = f"output_{uploaded_excel.name}"
             output_path = request_temp / output_name
-            results, _ = parser.start(output_path=str(output_path))
+            parser.start(output_path=str(output_path))
 
-            # Store in session for download
-            request.session['extraction_sm_download'] = str(output_path)
-            request.session['extraction_sm_download_name'] = output_name
+            # Read the generated file into memory BEFORE the finally block deletes it
+            with open(output_path, 'rb') as f:
+                file_data = io.BytesIO(f.read())
 
-            download_name = output_name
+            # Stream the file directly to the browser — no button, no session needed
+            return FileResponse(
+                file_data,
+                as_attachment=True,
+                filename=output_name,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            )
 
         except KeyError as e:
-            error_msg = str(e)
+            return render(request, 'Extraction_SM/main.html', {'error_msg': str(e)})
         except Exception as e:
-            error_msg = f"Processing error: {e}"
+            return render(request, 'Extraction_SM/main.html', {'error_msg': f"Processing error: {e}"})
         finally:
+            # Always close the parser and wipe the entire temp folder from disk
             if parser:
                 parser.close()
+            shutil.rmtree(request_temp, ignore_errors=True)
 
-    return render(request, 'Extraction_SM/main.html', {
-        'results': results,
-        'error_msg': error_msg,
-        'download_name': download_name,
-    })
-
-
-def download_file(request):
-    file_path = request.session.get('extraction_sm_download')
-    file_name = request.session.get('extraction_sm_download_name', 'output.xlsx')
-
-    if not file_path or not os.path.exists(file_path):
-        raise Http404("File not found or session expired.")
-
-    response = FileResponse(
-        open(file_path, 'rb'),
-        as_attachment=True,
-        filename=file_name,
-    )
-
-    request.session.pop('extraction_sm_download', None)
-    request.session.pop('extraction_sm_download_name', None)
-
-    return response
+    return render(request, 'Extraction_SM/main.html')

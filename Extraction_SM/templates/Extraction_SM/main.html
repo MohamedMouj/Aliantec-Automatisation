@@ -257,7 +257,7 @@
             border: 1px solid #fecaca;
             border-radius: var(--radius);
             padding: 1.25rem 1.5rem;
-            margin-top: 2rem;
+            margin-bottom: 2rem;
             max-width: 600px;
             margin-left: auto;
             margin-right: auto;
@@ -280,6 +280,16 @@
         <h1>Extraction SM</h1>
         <p>Upload an Excel file to extract SM values from "Sommaire" sheet</p>
     </header>
+
+    {% if error_msg %}
+    <div class="error-alert">
+        <div class="icon">⚠️</div>
+        <div>
+            <strong>Error</strong>
+            <p style="margin-top: 0.25rem;">{{ error_msg }}</p>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="upload-card">
         <form id="upload-form" method="post" enctype="multipart/form-data">
@@ -305,16 +315,6 @@
         <h2 style="color: white; margin-bottom: 0.5rem;">Processing Extraction...</h2>
         <p style="color: rgba(255,255,255,0.7);">Reading Sommaire sheet and extracting values.</p>
     </div>
-
-    {% if error_msg %}
-    <div class="error-alert">
-        <div class="icon">⚠️</div>
-        <div>
-            <strong>Error</strong>
-            <p style="margin-top: 0.25rem;">{{ error_msg }}</p>
-        </div>
-    </div>
-    {% endif %}
 
     {% if results %}
     <section class="results-container">
@@ -365,8 +365,44 @@
     {% endif %}
 
     <script>
-        document.getElementById('upload-form').addEventListener('submit', function() {
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
             document.getElementById('processing-overlay').style.display = 'flex';
+            
+            const formData = new FormData(this);
+            fetch(this.action || window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                // Check if the response is HTML (error page) or a file
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("text/html")) {
+                    return response.text().then(html => {
+                        document.open();
+                        document.write(html);
+                        document.close();
+                    });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                if (blob instanceof Blob) {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'output.xlsx'; 
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }
+                document.getElementById('processing-overlay').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('processing-overlay').style.display = 'none';
+            });
         });
 
         document.querySelectorAll('input[type="file"]').forEach(input => {
