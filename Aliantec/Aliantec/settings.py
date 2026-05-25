@@ -45,6 +45,10 @@ INSTALLED_APPS = [
     'django_tables2',
     'Main',
     'Listes_Types',
+    'FSCFAI_Compare',
+    'Listing_Devices',
+    'ExtractionVIN',
+    'Extraction_SM',
 ]
 
 MIDDLEWARE = [
@@ -55,7 +59,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'Aliantec.middleware.GlobalAuthMiddleware',
 ]
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = 'login'
 
 ROOT_URLCONF = 'Aliantec.urls'
 
@@ -132,3 +141,7 @@ STATICFILES_DIRS = [
 
 # The folder where 'collectstatic' will gather all files for production (Apache)
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media files (Uploaded files, generated reports)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

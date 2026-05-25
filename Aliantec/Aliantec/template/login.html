@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Aliantec{% endblock %}
+
+{% block content %}
+<div class="login-container" style="max-width: 400px; margin: 60px auto; padding: 40px; background: var(--bg-card, #fff); border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid var(--border-color, #eaeaea);">
+    <div style="text-align: center; margin-bottom: 30px;">  
+        <h2 style="margin: 0 0 10px 0; font-family: 'Outfit', sans-serif; color: black;">Welcome Back</h2>
+        <p style="color: var(--text-secondary, #666); margin: 0; font-size: 15px;">Please log in to your account</p>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        {% if form.errors %}
+            <div class="alert alert-error" style="color: #dc3545; background: #f8d7da; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
+                Invalid username or password. Please try again.
+            </div>
+        {% endif %}
+        
+        <div style="margin-bottom: 20px;">
+            <label for="id_username" style="display: block; margin-bottom: 8px; font-weight: 500; color: black;">Username</label>
+            <input type="text" name="username" autofocus autocapitalize="none" autocomplete="username" maxlength="150" required id="id_username" style="width: 100%; padding: 12px 15px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; box-sizing: border-box; font-size: 15px; background: var(--bg-input, #fafafa); color: black; transition: border-color 0.2s;">
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+            <label for="id_password" style="display: block; margin-bottom: 8px; font-weight: 500; color: black;">Password</label>
+            <input type="password" name="password" autocomplete="current-password" required id="id_password" style="width: 100%; padding: 12px 15px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; box-sizing: border-box; font-size: 15px; background: var(--bg-input, #fafafa); color: black; transition: border-color 0.2s;">
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; background: var(--primary-color, #2563eb); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; transition: background-color 0.3s; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);">
+            Log In
+        </button>
+    </form>
+</div>
+{% endblock %}

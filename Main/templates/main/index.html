@@ -8,46 +8,125 @@
 {% endblock %}
 
 {% block content %}
-    <section class="dashboard-header">
-        <h1>Automation Applications</h1>
-        <p>Select an application to begin your automation workflow.</p>
-    </section>
+    <header class="page-header">
+        <h1>Automation Toolkit</h1>
+        <p>Select an Application, and begin your automation journey</p>
+    </header>
 
-    <div class="dashboard-grid mt-4">
-        <div class="app-card" onclick="location.href='listes_types/'">
+    <div class="dashboard-grid">
+        <div class="app-card" onclick="location.href='/listes_types/'">
             <div class="app-card-inner">
                 <div class="app-card-front">
-                    <img src="{% static 'edit.svg' %}" alt="Listes-Types">
-                    <h3>Listes-Types Filling</h3>
+                    <div class="app-icon-wrapper" ><!-- style="background: var(--primary-light); width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center;"> -->
+                        <img src="{% static 'edit.svg' %}" alt="Listes-Types" style="width: 48px; height: 48px;">
+                    </div>
+                    <h3>Listes-Types Update</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">List Types Synchronization against PTA</p>
                 </div>
                 <div class="app-card-back">
-                    <h3>Automation</h3>
-                    <p>Automate filling and updating Listes-Types files.</p>
-                    <div class="btn btn-outline mt-4" style="color: white; border-color: white;">Launch App</div>
+                    <h3 style="color: white;">Listes-Types</h3>
+                    <p>Input: PTA File + FSCFAI Folder(List Type + New Fenetrage).<br>Output: List Type Adapte.</p>
+                    <div class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.5); margin-top: 1.5rem; background: rgba(255,255,255,0.1);">Launch Application</div>
                 </div>
             </div>
         </div>
-        <div class="app-card">
+
+        <div class="app-card" onclick="location.href='/FSCFAI_Compare/'">
             <div class="app-card-inner">
                 <div class="app-card-front">
-                    <img src="{% static 'unknown.svg' %}" alt="Coming Soon">
-                    <h3>Tool x</h3>
+                    <div class="app-icon-wrapper"><!-- style="background: #fef3c7; width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;"> -->
+                        <img src="{% static 'comparaison.svg' %}" alt="FSCFAI Compare" style="width: 48px; height: 48px;">
+                    </div>
+                    <h3>FSCFAI Compare</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Smart reference comparison</p>
                 </div>
                 <div class="app-card-back">
-                    <h3>Stub</h3>
-                    <p>upcoming Feature</p>
+                    <h3 style="color: white;">FSCF Compare</h3>
+                    <p>Input: Excel File (old and new ref) + FSCF Folder(OLD+NEW).<br>Output: Visual .FSCFAI files content comaprison.</p>
+                    <div class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.5); margin-top: 1.5rem; background: rgba(255,255,255,0.1);">Launch Application</div>
                 </div>
             </div>
         </div>
-        <div class="app-card">
+
+        <div class="app-card" onclick="location.href='/Listing_Devices/'">
             <div class="app-card-inner">
                 <div class="app-card-front">
-                    <img src="{% static 'unknown.svg' %}" alt="Coming Soon">
-                    <h3>Tool x</h3>
+                    <div class="app-icon-wrapper"><!--style="background: #dcfce7; width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;"> -->
+                        <img src="{% static 'list.svg' %}" alt="Listing Devices" style="width: 48px; height: 48px;">
+                    </div>
+                    <h3>Device Listing</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Export device inventory</p>
                 </div>
                 <div class="app-card-back">
-                    <h3>Stub</h3>
-                    <p>Upcoming Feature</p>
+                    <h3 style="color: white;">Device Listing</h3>
+                    <p>Input: FSCSFAI Folder.<br>Output: Excel File with all listed devices.</p>
+                    <div class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.5); margin-top: 1.5rem; background: rgba(255,255,255,0.1);">Launch Application</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card" onclick="location.href='/ExtractionVIN/'">
+            <div class="app-card-inner">
+                <div class="app-card-front">
+                     <div class="app-icon-wrapper"><!--</div> style="background: #dcfce7; width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;"> -->
+                        <img src="{% static 'excel.svg' %}" alt="Extraction VIN" style="width: 48px; height: 48px;">
+                    </div>
+                    <h3>Extraction VIN</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">unknown</p>
+                </div>
+                <div class="app-card-back">
+                    <h3 style="color: white;">Extraction VIN</h3>
+                    <p>Input: Excel File.<br>Output: Excel File Adapte.</p>
+                    <div class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.5); margin-top: 1.5rem; background: rgba(255,255,255,0.1);">Launch Application</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card" onclick="location.href='/Extraction_SM/'">
+            <div class="app-card-inner">
+                <div class="app-card-front">
+                     <div class="app-icon-wrapper"><!-- style="background: #dcfce7; width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;"> -->
+                        <img src="{% static 'list.svg' %}" alt="Listing Devices" style="width: 48px; height: 48px;">
+                    </div>
+                    <h3>Extraction SM</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">unknown</p>
+                </div>
+                <div class="app-card-back">
+                    <h3 style="color: white;">Unknown</h3>
+                    <p>Input: Excel File.<br>Output: Excel File Adapte.</p>
+                    <div class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.5); margin-top: 1.5rem; background: rgba(255,255,255,0.1);">Launch Application</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card" style="opacity: 0.6; cursor: not-allowed;">
+            <div class="app-card-inner">
+                <div class="app-card-front">
+                     <div class="app-icon-wrapper"><!-- style="background: var(--surface-hover); width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;" -->
+                        <img src="{% static 'unknown.svg' %}" alt="Upcoming" style="width: 40px; height: 40px; opacity: 0.5;">
+                    </div>
+                    <h3 style="color: var(--text-muted);">Future Tool</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Coming Soon</p>
+                </div>
+                <div class="app-card-back" style="background: var(--text-muted);">
+                    <h3 style="color: white;">Stay Tuned</h3>
+                    <p>More automation tools are under development to further optimize your workflow.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card" style="opacity: 0.6; cursor: not-allowed;">
+            <div class="app-card-inner">
+                <div class="app-card-front">
+                     <div class="app-icon-wrapper"><!-- style="background: var(--surface-hover); width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;"-->
+                        <img src="{% static 'unknown.svg' %}" alt="Upcoming" style="width: 40px; height: 40px; opacity: 0.5;">
+                    </div>
+                    <h3 style="color: var(--text-muted);">Future Tool</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Coming Soon</p>
+                </div>
+                <div class="app-card-back" style="background: var(--text-muted);">
+                    <h3 style="color: white;">Stay Tuned</h3>
+                    <p>More automation tools are under development to further optimize your workflow.</p>
                 </div>
             </div>
         </div>

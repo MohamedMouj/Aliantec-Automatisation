@@ -1,0 +1,83 @@
+import io
+import os
+import shutil
+import zipfile
+import uuid
+from pathlib import Path
+from django.shortcuts import render
+from django.http import FileResponse
+from .helpers.process import CompareProcess
+
+
+def index(request):
+    if request.method == 'POST' and request.FILES.get('input_zip') and request.FILES.get('input_excel'):
+        uploaded_zip = request.FILES['input_zip']
+        uploaded_excel = request.FILES['input_excel']
+
+        temp_base = Path(__file__).resolve().parent / 'temp'
+        temp_base.mkdir(exist_ok=True)
+
+        request_temp = temp_base / str(uuid.uuid4())
+        request_temp.mkdir(exist_ok=True)
+
+        try:
+            # Save uploaded Excel file
+            excel_path = request_temp / uploaded_excel.name
+            with open(excel_path, 'wb+') as destination:
+                for chunk in uploaded_excel.chunks():
+                    destination.write(chunk)
+
+            # Save uploaded ZIP file
+            zip_path = request_temp / uploaded_zip.name
+            with open(zip_path, 'wb+') as destination:
+                for chunk in uploaded_zip.chunks():
+                    destination.write(chunk)
+
+            # Extract the ZIP
+            extract_path = request_temp / 'extracted'
+            extract_path.mkdir(exist_ok=True)
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_path)
+
+            extract_old_path = extract_path / uploaded_zip.name.split('.')[0] / 'OLD'
+            extract_new_path = extract_path / uploaded_zip.name.split('.')[0] / 'NEW'
+
+            processor = CompareProcess(
+                excel_file=str(excel_path),
+                old_folder=str(extract_old_path),
+                new_folder=str(extract_new_path),
+            )
+            processor.start()
+
+            # Build the output ZIP in memory — no base64 encoding needed
+            output_dir = extract_path / 'output'
+            if not output_dir.exists():
+                return render(request, 'FSCFAI_Compare/main.html', {
+                    'error': 'Processing completed but no output directory was produced.'
+                })
+
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for root, _, files in os.walk(output_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        zf.write(file_path, os.path.relpath(file_path, output_dir))
+            zip_buffer.seek(0)
+
+            # Stream the ZIP directly to the browser — temp dir is cleaned in finally
+            output_zip_name = f"compare_output_{uploaded_zip.name.split('.')[0]}.zip"
+            return FileResponse(
+                zip_buffer,
+                as_attachment=True,
+                filename=output_zip_name,
+                content_type='application/zip',
+            )
+
+        except Exception as e:
+            return render(request, 'FSCFAI_Compare/main.html', {'error': str(e)})
+
+        finally:
+            # Always wipe the entire temp folder from disk
+            shutil.rmtree(request_temp, ignore_errors=True)
+
+    return render(request, 'FSCFAI_Compare/main.html')

@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Aliantec Toolkit | FSCFAI File Compare{% endblock %}
+
+{% block extra_css %}
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
+    <style>
+        /* Local overrides or specific styles for main.html */
+        :root {
+            --radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .upload-card {
+            background: var(--surface);
+            padding: 2.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .upload-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-main);
+            font-size: 0.9rem;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            text-align: center;
+            transition: var(--transition);
+            background: var(--background);
+        }
+
+        .file-input-wrapper:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-input-wrapper .icon {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-input-wrapper .hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .btn-process {
+            width: 100%;
+            padding: 1.25rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-process:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--primary-glow);
+        }
+
+        /* Processing Overlay */
+        #processing-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        .results-container {
+            margin-top: 4rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .result-item {
+            background: var(--surface);
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .result-header {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .result-header:hover {
+            background: var(--primary-light);
+        }
+
+        .ref-pair {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-weight: 600;
+        }
+
+        .ref-badge {
+            background: #f1f5f9;
+            padding: 0.25rem 0.75rem;
+            border-radius: 99px;
+            font-size: 0.85rem;
+            color: var(--primary);
+        }
+
+        .arrow-icon {
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+
+        .result-item.active .arrow-icon {
+            transform: rotate(180deg);
+        }
+
+        .diff-content {
+            display: none;
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+            overflow-x: auto;
+        }
+
+        .result-item.active .diff-content {
+            display: block;
+        }
+
+        /* Diff Table Styling */
+        table.diff {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        table.diff thead th {
+            text-align: left;
+            padding: 0.75rem;
+            background: var(--background);
+            border-bottom: 2px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        table.diff td {
+            padding: 0.4rem 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .diff_header {
+            background: #f1f5f9;
+            color: var(--text-muted);
+            text-align: right;
+            width: 3rem;
+            user-select: none;
+            border-right: 1px solid var(--border);
+        }
+
+        .diff_add { background: #dcfce7; color: #166534; }
+        .diff_sub { background: #fee2e2; color: #991b1b; }
+        .diff_chg { background: #fef9c3; color: #854d0e; }
+        .diff_next { display: none; }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <h1>FSCFAI Compare</h1>
+        <p>Old and New Reference Comparison</p>
+    </header>
+
+    <div class="upload-card">
+        <form id="upload-form" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>PTA (Excel)</label>
+                    <div class="file-input-wrapper">
+                        <div class="icon">📊</div>
+                        <div class="text">Select Excel File</div>
+                        <div class="hint">Excel File with new and old ref(.xlsx, .xls, xlsm)</div>
+                        <input type="file" name="input_excel" accept=".xlsx,.xls,.xlsm" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>FSCFAI (ZIP)</label>
+                    <div class="file-input-wrapper">
+                        <div class="icon">📦</div>
+                        <div class="text">Select Source ZIP</div>
+                        <div class="hint">FSCFAI File Collection (.zip)</div>
+                        <input type="file" name="input_zip" accept=".zip" required>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn-process">
+                <span>Start Comparison Analysis</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+        </form>
+    </div>
+
+    <div id="processing-overlay">
+        <div class="spinner"></div>
+        <h2 style="color: white; margin-bottom: 0.5rem;">Processing Comparison...</h2>
+        <p style="color: rgba(255,255,255,0.7);">Analyzing files and generating diff reports.</p>
+    </div>
+
+
+    {% if results %}
+    <section class="results-container">
+        <h2 style="margin-bottom: 2rem; font-weight: 700;">Comparison Analysis</h2>
+        
+        {% for result in results %}
+        <div class="result-item">
+            <div class="result-header" onclick="toggleDiff(this)">
+                <div class="ref-pair">
+                    <span class="ref-badge">OLD</span>
+                    <span>{{ result.old_ref }}</span>
+                    <span style="color: var(--text-muted); font-weight: 400;">→</span>
+                    <span class="ref-badge">NEW</span>
+                    <span>{{ result.new_ref }}</span>
+                </div>
+                <div class="arrow-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+            </div>
+            <div class="diff-content">
+                {{ result.diff_content|safe }}
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+    {% elif results is not None %}
+    <section class="results-container" style="text-align: center; padding: 4rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); margin-top: 2rem;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+        <h3 style="font-weight: 700; color: var(--text-main);">No matches found</h3>
+        <p style="color: var(--text-muted);">We couldn't find any matching FSCFAI files for the references provided in the Excel file.</p>
+        <div style="margin-top: 2rem; font-size: 0.9rem; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; background: var(--background); padding: 1.5rem; border-radius: var(--radius);">
+            <strong style="display: block; margin-bottom: 0.5rem; color: var(--text-main);">Please verify:</strong>
+            <ul style="color: var(--text-muted); padding-left: 1.25rem;">
+                <li>The ZIP contains <code>.fscfai</code> files.</li>
+                <li>The references in Excel are 10-digit numbers.</li>
+                <li>The 10-digit references are present in the filenames of the <code>.fscfai</code> files.</li>
+            </ul>
+        </div>
+    </section>
+    {% endif %}
+
+    <script>
+        // Automatically download the generated Notepad++ text files
+        const zipData = "{{ zip_data|default_if_none:'' }}";
+        if (zipData !== "") {
+            document.addEventListener('DOMContentLoaded', function() {
+                const link = document.createElement("a");
+                link.href = "data:application/zip;base64," + zipData;
+                link.download = "FSCFAI_Comparison_Output.zip";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+
+        function toggleDiff(header) {
+            const item = header.parentElement;
+            item.classList.toggle('active');
+        }
+
+        // Show overlay on submit
+        document.getElementById('upload-form').addEventListener('submit', function() {
+            document.getElementById('processing-overlay').style.display = 'flex';
+        });
+
+
+        // Add file name display
+        document.querySelectorAll('input[type="file"]').forEach(input => {
+            input.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const wrapper = this.parentElement;
+                    const textEl = wrapper.querySelector('.text');
+                    textEl.textContent = this.files[0].name;
+                    textEl.style.color = 'var(--primary)';
+                    textEl.style.fontWeight = '600';
+                }
+            });
+        });
+    </script>
+{% endblock %}
