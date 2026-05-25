@@ -25,11 +25,11 @@ coverage.xml
 # Project specific temporary folders
 Listes_Types/t/
 Listes_Types/temp/
-Listes_Types/services/__pycache__/
-Listes_Types/helpers/__pycache__/
-Listes_Types/migrations/__pycache__/
-Main/__pycache__/
-Main/migrations/__pycache__/
+FSCFAI_Compare/temp/
+FSCFAI_Compare/debug_mode.txt
+Listing_Devices/temp/
+Extraction_SM/temp/
+Extraction_VIN/temp/
 
 # Environments
 .env
@@ -37,7 +37,9 @@ Main/migrations/__pycache__/
 env/
 venv/
 ENV/
+.gitignore
 
 # OS
 .DS_Store
 Thumbs.db
+
