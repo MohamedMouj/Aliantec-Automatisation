@@ -3,6 +3,7 @@ import os
 import shutil
 import zipfile
 import uuid
+import base64
 from pathlib import Path
 from django.shortcuts import render
 from django.http import FileResponse
@@ -47,9 +48,9 @@ def index(request):
                 old_folder=str(extract_old_path),
                 new_folder=str(extract_new_path),
             )
-            processor.start()
+            results = processor.start()
 
-            # Build the output ZIP in memory — no base64 encoding needed
+            # Build the output ZIP in memory
             output_dir = extract_path / 'output'
             if not output_dir.exists():
                 return render(request, 'FSCFAI_Compare/main.html', {
@@ -62,16 +63,13 @@ def index(request):
                     for file in files:
                         file_path = os.path.join(root, file)
                         zf.write(file_path, os.path.relpath(file_path, output_dir))
-            zip_buffer.seek(0)
-
-            # Stream the ZIP directly to the browser — temp dir is cleaned in finally
-            output_zip_name = f"compare_output_{uploaded_zip.name.split('.')[0]}.zip"
-            return FileResponse(
-                zip_buffer,
-                as_attachment=True,
-                filename=output_zip_name,
-                content_type='application/zip',
-            )
+            
+            zip_data = base64.b64encode(zip_buffer.getvalue()).decode('utf-8')
+            
+            return render(request, 'FSCFAI_Compare/main.html', {
+                'zip_data': zip_data,
+                'results': results
+            })
 
         except Exception as e:
             return render(request, 'FSCFAI_Compare/main.html', {'error': str(e)})
