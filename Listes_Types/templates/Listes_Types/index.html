@@ -87,7 +87,7 @@
                     <label>PTA(Excel)</label>
                     <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
                         <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📊</div>
-                        <div class="text" style="font-weight: 600; color: var(--text-main);">Select Excel File</div>
+                        <div class="text" style="font-weight: 600; color: var(--text-main);">Select PTA File</div>
                         <small id="pta_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">PTA Mapping Data (.xlsx, .xls, .xlsm)</small>
                         <input type="file" name="pta_file" id="pta_file" accept=".xlsx, .xls, .xlsm" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
                     </div>
@@ -121,7 +121,7 @@
     <div id="processing-overlay">
         <div class="spinner"></div>
         <h2 style="color: white; margin-bottom: 0.5rem;">Processing Documents...</h2>
-        <p style="color: rgba(255,255,255,0.7);">Synchronizing Listes-Types with PTA data.</p>
+        <p style="color: rgba(255,255,255,0.7);">Synchronizing List-Types with PTA data.</p>
     </div>
 
     {% if processed %}
@@ -129,7 +129,7 @@
         <div class="mb-4" style="display: flex; justify-content: space-between; align-items: center;">
             <h2 style="margin: 0;">Processing Results</h2>
             <span class="badge" style="background: var(--primary-light); color: var(--primary); padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 700; font-size: 0.875rem;">
-                {{ xml_count }} XML Files processed
+                {{ xml_count }} LIST-TYPES Files processed
             </span>
         </div>
 
@@ -227,7 +227,7 @@
             }
         });
 
-
+''
         // Tab Navigation
         function openTab(evt, tabName) {
             let i, tabcontent, tablinks;
