@@ -86,7 +86,10 @@ class ExcelParser:
         rows_to_delete = self.determine_rows_to_remove()
 
         if not rows_to_delete:
-            return results, output_path or self.excel_file_name
+            save_path = output_path or self.excel_file_name
+            if output_path:
+                self.wb.save(save_path)
+            return results, save_path
 
         self.delete_rows(rows_to_delete)
 
@@ -96,7 +99,7 @@ class ExcelParser:
                 cell.value = value
                 description = self.get_description(value)
                 if description and len(description) > 0:
-                    cell.offset(column=2).value = (", ".join(str(d) for d in description if d is not None))
+                    cell.offset(column=2).value = ("; ".join(str(d) for d in description if d is not None))
                 results.append({
                     "row": cell.row,
                     "value": str(value),
