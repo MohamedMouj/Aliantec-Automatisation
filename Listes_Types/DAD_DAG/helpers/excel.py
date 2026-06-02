@@ -22,6 +22,14 @@ class excel:
                 if cell.value is not None and 30 <= len(str(cell.value))<=70:
                     return cell
 
+    def search_sheet(self, cell):
+        sheet_title = cell.sheet.title
+        if "DAD" in sheet_title:
+            return sheet_title.replace("DAD", "DAG")
+        elif "DAG" in sheet_title:
+            return sheet_title.replace("DAG", "DAD")
+        else:
+            return False
 
     def find_target_cell_column(self, cell):
         col_idx = cell.column
@@ -45,8 +53,11 @@ class excel:
         self.load()
         ref_cell = self.search_ref(ref)
         desc_cell = self.get_ref_name(ref_cell)
-        target_cell = self.find_target_cell_column(self, desc_cell)
-        target_ref = self.get_ref_by_desc(target_cell)
+        if self.search_sheet(desc_cell):
+            pass
+        else:
+            target_cell = self.find_target_cell_column(desc_cell)
+            target_ref = self.get_ref_by_desc(target_cell)
         return target_ref
 
 excel1= excel()
