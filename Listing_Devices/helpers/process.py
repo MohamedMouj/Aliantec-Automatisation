@@ -55,6 +55,7 @@ class DevicesProcess:
         
 
     def start(self):      
+        
         data = self.fs_helper.find_fscfai_files()
         if not data:
             return False
@@ -65,7 +66,7 @@ class DevicesProcess:
             for line in file_data[1:]:
                 if line.strip():
                     nor = self.normalize_line(line)
-                    if nor:
+                    if len(nor)>0:
                         normalized_data.append([fuseaux, filename] + nor)
         # c=0
         # for i in normalized_data:
