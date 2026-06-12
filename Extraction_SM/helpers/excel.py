@@ -1,7 +1,7 @@
 import openpyxl
-import re
-
 from openpyxl import cell
+from openpyxl.styles import Border, Side
+import re
 
 
 class ExcelParser:
@@ -12,6 +12,9 @@ class ExcelParser:
         self.wb = None
         self.sheet = None
 
+    def close(self):
+        if self.wb:
+            self.wb.close()
     def load_excel(self):
         self.wb = openpyxl.load_workbook(self.excel_file_name, data_only=True)
 
@@ -28,30 +31,31 @@ class ExcelParser:
         if self.wb:
             self.wb.close()
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def determine_rows_to_remove(self):
         last_col = self.sheet.max_column
-        aux=False
-        rows_to_delete=[]
+        rows_to_delete = []
         for cell in list(self.sheet.columns)[last_col - 1]:
-            if cell.fill and cell.fill.fill_type == "solid":
-                color = cell.fill.fgColor
-
-                if color.type == "theme" and color.theme in (0, 1):
-                    if (color.tint and round(color.tint, 2) == -0.25) or  color.type == "rgb" and color.rgb in ("C0C0C0", "FFC0C0C0"):
-                        if not aux:
-                            aux=True    
-                        continue
-            if aux and cell.value is None or str(cell.value).strip() == "":
+            if cell.row <= 6:
+                continue
+            print(f"Row {cell.row}: value={repr(cell.value)}")  # ← add this
+            if cell.value is None or str(cell.value).strip() == "":
                 rows_to_delete.append(cell.row)
+        print("Rows to delete:", rows_to_delete)  # ← and this
         return rows_to_delete
 
     def delete_rows(self, rows_to_delete):
+        rows_set = set(rows_to_delete)
+        # Unmerge any merged cells that touch rows being deleted
+        # openpyxl leaves ghost merge definitions if you delete without unmerging first
+        for merge in list(self.sheet.merged_cells.ranges):
+            if merge.min_row in rows_set or merge.max_row in rows_set:
+                self.sheet.unmerge_cells(str(merge))
+        # Now safely delete the rows
         for row in sorted(rows_to_delete, reverse=True):
             self.sheet.delete_rows(row)
+
+    def delete_col(self):
+        self.sheet.delete_cols(idx=3, amount=7)
     
     def create_col_before_last_column(self):
         last_col_index = self.sheet.max_column  
@@ -77,12 +81,31 @@ class ExcelParser:
         return description
 
 
+    def mise_en_forme(self):
+        # 1. Define the border style once (efficient)
+        thin_side = Side(style='thin')
+        grid_border = Border(top=thin_side, bottom=thin_side, left=thin_side, right=thin_side)
+        
+        # 2. Loop through columns from index 7 to the maximum column
+        # +1 ensures the last column is included in range()
+        for col_idx in range(1, self.sheet.max_column + 1):
+            
+            # 3. Loop through your target rows (rows 10, 11, and 12)
+            # Use range(10, 13) to target rows 10, 11, and 12
+            for row_idx in range(7, self.sheet.max_row + 1):
+                
+                # 4. Apply the border using the numeric coordinates
+                self.sheet.cell(row=row_idx, column=col_idx).border = grid_border
+
+
+
     # ------------------------------------------------------------------
     # Main process
     # ------------------------------------------------------------------
 
     def start(self, output_path=None):
         results = []
+        # self.load_excel()
         rows_to_delete = self.determine_rows_to_remove()
 
         if not rows_to_delete:
@@ -94,30 +117,27 @@ class ExcelParser:
         self.delete_rows(rows_to_delete)
 
         for cell in self.create_col_before_last_column():
+
             value = self.get_last_line_value(cell.row)
             if value:
+
                 cell.value = value
                 description = self.get_description(value)
+                desc_cell=cell.offset(column=2)
                 if description and len(description) > 0:
-                    cell.offset(column=2).value = ("; ".join(str(d) for d in description if d is not None))
-                results.append({
-                    "row": cell.row,
-                    "value": str(value),
-                    "status": "ok",
-                    "message": "Value extracted"
-                })
+                    desc_cell.value = ("; ".join(str(d) for d in description if d is not None))
+                # results.append({
+                #     "row": cell.row,
+                #     "value": str(value),
+                #     "status": "ok",
+                #     "message": "Value extracted"
+                # })
+        self.delete_col()
+        self.mise_en_forme()
+        
 
         save_path = output_path or self.excel_file_name
         self.wb.save(save_path)
         return results, save_path
 
 
-# if __name__ == "__main__":
-#     excel = ExcelParser(
-#         r"C:\Users\User\OneDrive\Bureau\Sommaire pour contexte test.xlsx"
-#     )
-#     excel.load_excel()
-#     results, _ = excel.start()
-#     for r in results:
-#         print(f"Row {r['row']}: {r['value']}")
-#     excel.close()
