@@ -9,13 +9,14 @@ from ..helpers.excel_parser import excel_parser
 from ..helpers.ref_processor import RefProcessor
 
 class Orchestrator:
-    def __init__(self, pta_full_path, zip_path, extract_dir, fscfai_data=None, parse_right=False):
+    def __init__(self, pta_full_path, zip_path, extract_dir, fscfai_data=None, parse_right=False, list_type=None):
         self.pta_full_path = pta_full_path
         self.zip_path = zip_path
         self.extract_dir = extract_dir
         self.context = SharedData()
         self.context.fscfai_files = fscfai_data
         self.parse_right = parse_right
+        self.list_type = list_type
         
         # The TEMP_DIR is the parent of the extract_dir (the session folder)
         self.TEMP_DIR = os.path.abspath(str(Path(extract_dir).parent))
@@ -54,7 +55,7 @@ class Orchestrator:
             
             xml_to_process = reversed(parsed_xmls) if self.parse_right else parsed_xmls
             for temp_xml in xml_to_process:
-                processor = RefProcessor(excel_helper, temp_xml, fs_helper, self.context, parse_right=self.parse_right)
+                processor = RefProcessor(excel_helper, temp_xml, fs_helper, self.context, parse_right=self.parse_right, list_type=self.list_type)
                 grid_data, to_delete, summary, output_path = processor.run()
 
                 all_grid_data.extend(grid_data)
@@ -69,7 +70,7 @@ class Orchestrator:
                     all_output_paths.append(output_path)
 
             if parsed_xmls:
-                processor = RefProcessor(excel_helper, parsed_xmls[-1], fs_helper, self.context, parse_right=self.parse_right)
+                processor = RefProcessor(excel_helper, parsed_xmls[-1], fs_helper, self.context, parse_right=self.parse_right, list_type=self.list_type)
                 all_to_add = processor.detect_new_ref()
             else:
                 all_to_add = []

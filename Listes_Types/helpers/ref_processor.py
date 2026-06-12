@@ -1,13 +1,14 @@
 import os
 
 class RefProcessor:
-    def __init__(self, excel_obj, xml_obj, fs_obj, context, parse_right=False):
+    def __init__(self, excel_obj, xml_obj, fs_obj, context, parse_right=False, list_type=None):
         self.excel_obj = excel_obj
         self.xml_obj = xml_obj
         self.fs_obj = fs_obj
         self.context = context
         self.xml_path = self.xml_obj.xml_file_name
         self.parse_right = parse_right
+        self.list_type = list_type
 
     def run(self):
         """
@@ -47,7 +48,8 @@ class RefProcessor:
                 "old_xml_ref_value": old_xml_path,
                 "new_xml_ref_value": old_xml_path,
                 "status": "",
-                "reason": ""
+                "reason": "",
+                "list_type": self.list_type
             }
             
             excel_match_cell = self.excel_obj.search_by_ref(current_ref)

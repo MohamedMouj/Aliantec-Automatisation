@@ -1,0 +1,358 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load render_table from django_tables2 %}
+
+{% block title %}Aliantec Toolkit | DAD_DAG Processing{% endblock %}
+
+{% block extra_css %}
+    <link href="{% static 'css/listes-types.css' %}" rel="stylesheet">
+    <style>
+        /* Processing Overlay Styles */
+        #processing-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn-standard {
+            width: 100%;
+            padding: 1.25rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-standard:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--primary-glow);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <h1>DAD_DAG List-Type Update</h1>
+        <p>Automated synchronization of DAD_DAG documents with PTA data.</p>
+    </header>
+
+    {% if error %}
+    <div class="alert alert-error">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="card form-card">
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
+            {% csrf_token %}
+            <input type="hidden" name="fscfai_json" id="fscfai_json_input">
+            
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>PTA(Excel)</label>
+                    <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
+                        <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📊</div>
+                        <div class="text" style="font-weight: 600; color: var(--text-main);">Select PTA File</div>
+                        <small id="pta_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">PTA Mapping Data (.xlsx, .xls, .xlsm)</small>
+                        <input type="file" name="pta_file" id="pta_file" accept=".xlsx, .xls, .xlsm" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>FSCFAI (ZIP)</label>
+                    <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
+                        <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📦</div>
+                        <div class="text" style="font-weight: 600; color: var(--text-main);">Select Source ZIP</div>
+                        <small id="zip_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">FSCFAI File Collection (.zip)</small>
+                        <input type="file" id="zipped_fscfai_input" accept=".zip" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
+                        <input type="file" name="zipped_fscfai" id="zipped_fscfai_actual" style="display:none;">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="field-group" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 0.75rem; background: var(--background); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                <input type="checkbox" name="parse_right" id="parse_right" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
+                <label for="parse_right" style="margin-bottom: 0; cursor: pointer; font-weight: 600; color: var(--text-main); font-size: 0.9rem;">
+                    Case: NEW REF are on the right of OLD REF
+                </label>
+            </div>
+            
+            <button type="submit" class="btn-standard" id="btn-lancer_traitement" style="margin-top: 1.5rem;">
+                <span>Start Processing & Synchronization</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+        </form>
+    </div>
+
+    <div id="processing-overlay">
+        <div class="spinner"></div>
+        <h2 style="color: white; margin-bottom: 0.5rem;">Processing Documents...</h2>
+        <p style="color: rgba(255,255,255,0.7);">Synchronizing List-Types with PTA data.</p>
+    </div>
+
+    {% if processed %}
+    <div class="results-section mt-8">
+        <div class="mb-4" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0;">Processing Results</h2>
+            <span class="badge" style="background: var(--primary-light); color: var(--primary); padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 700; font-size: 0.875rem;">
+                {{ xml_count }} LIST-TYPES Files processed
+            </span>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Analyzed</div>
+                <div class="stat-value">{{ summary.total }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Matches</div>
+                <div class="stat-value">{{ summary.matches }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Updates</div>
+                <div class="stat-value">{{ summary.updates }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">To Delete</div>
+                <div class="stat-value" style="color: var(--error);">{{ summary.deletes }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">To Add</div>
+                <div class="stat-value" style="color: var(--success);">{{ summary.new_in_excel }}</div>
+            </div>
+        </div>
+
+        <div class="tab-container mt-8">
+            <div class="tab-nav">
+                <div class="tab-link active" onclick="openTab(event, 'tab1')">Updates</div>
+                <div class="tab-link" onclick="openTab(event, 'tab2')">To Add</div>
+                <div class="tab-link" onclick="openTab(event, 'tab3')">To Delete</div>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" id="searchInput" class="search-input" onkeyup="filterTable()" placeholder="Search in results...">
+            </div>
+
+            <div id="tab1" class="tab-pane active">
+                <div class="table-wrapper">
+                    <div class="table-scroll">
+                        {% render_table table_updates %}
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab2" class="tab-pane">
+                <div class="table-wrapper">
+                    <div class="table-scroll">
+                        {% render_table table_additions %}
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab3" class="tab-pane">
+                <div class="table-wrapper">
+                    <div class="table-scroll">
+                        {% render_table table_deletions %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'JS/jszip.min.js' %}"></script>
+    <script>
+        // File name display
+        document.getElementById('pta_file').addEventListener('change', function() {
+            if (this.files[0]) {
+                const wrapper = this.parentElement;
+                const textEl = wrapper.querySelector('.text');
+                textEl.textContent = this.files[0].name;
+                textEl.style.color = 'var(--primary)';
+                wrapper.style.borderColor = 'var(--primary)';
+                wrapper.style.background = 'var(--primary-light)';
+            }
+        });
+        document.getElementById('zipped_fscfai_input').addEventListener('change', function() {
+            if (this.files[0]) {
+                const wrapper = this.parentElement;
+                const textEl = wrapper.querySelector('.text');
+                textEl.textContent = this.files[0].name;
+                textEl.style.color = 'var(--primary)';
+                wrapper.style.borderColor = 'var(--primary)';
+                wrapper.style.background = 'var(--primary-light)';
+            }
+        });
+
+        // Tab Navigation
+        function openTab(evt, tabName) {
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-pane");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-link");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+            filterTable();
+        }
+
+        // Table Filtering
+        function filterTable() {
+            let input = document.getElementById("searchInput");
+            let filter = input.value.toUpperCase();
+            let activePane = document.querySelector(".tab-pane.active");
+            
+            if (activePane) {
+                let table = activePane.querySelector("table");
+                if (table) {
+                    let tr = table.getElementsByTagName("tr");
+                    for (let i = 1; i < tr.length; i++) {
+                        let txtValue = tr[i].textContent || tr[i].innerText;
+                        tr[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+                    }
+                }
+            }
+        }
+
+        // Table Sorting
+        document.addEventListener('DOMContentLoaded', function() {
+            const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+            const comparer = (idx, asc) => (a, b) => ((v1, v2) => 
+                v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2) ? v1 - v2 : v1.toString().localeCompare(v2)
+                )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+
+            document.querySelectorAll('th').forEach(th => th.addEventListener('click', function() {
+                const table = th.closest('table');
+                const tbody = table.querySelector('tbody') || table;
+                const ArrayTr = Array.from(tbody.querySelectorAll('tr'));
+                this.asc = !this.asc;
+                ArrayTr.sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc))
+                    .forEach(tr => tbody.appendChild(tr));
+            }));
+        });
+    
+        // Form Submission Handler
+        document.getElementById('uploadForm').addEventListener('submit', async function(e){
+            if (this.dataset.ready === "true") return;
+            e.preventDefault();
+
+            const fscfai_folder_file = document.getElementById('zipped_fscfai_input').files[0];
+            const pta_file_file = document.getElementById('pta_file').files[0];
+            
+            if(!fscfai_folder_file || !pta_file_file){
+                alert('Please select a Listes-Types ZIP folder and a PTA file.');
+                return;
+            }
+
+            const btn = document.getElementById('btn-lancer_traitement');
+            const originalText = btn.innerText;
+            btn.innerText = 'PREPARING ZIP...';
+            btn.disabled = true;
+            document.getElementById('processing-overlay').style.display = 'flex';
+
+            try {
+                const zip = await JSZip.loadAsync(fscfai_folder_file);
+                const fscfai_refs = {};
+                const newZip = new JSZip();
+                let listCount = 0;
+                const filePromises = [];
+
+                zip.forEach((relativePath, file) => {
+                    if (file.dir) return;
+                    const parts = relativePath.split('/');
+                    const basename = parts[parts.length - 1];
+                    if (!basename) return;
+                    const ext = basename.split('.').pop().toLowerCase();
+                    
+                    if (ext === 'fscfai') {
+                        const match = basename.match(/(\d{10})/);
+                        if (match) {
+                            if(fscfai_refs[match[1]]) {
+                                console.log(parts[parts.length - 2])
+                                console.log(`Duplicate reference ${match[1]} found.`);
+                            }
+                            fscfai_refs[match[1]] = basename;}
+                    } else if (ext === 'list') {
+                        listCount++;
+                        filePromises.push(file.async('blob').then(content => {
+                            newZip.file(basename, content);
+                        }));
+                    }
+                });
+
+                await Promise.all(filePromises);
+
+                if (listCount === 0) {
+                    alert('No .list files found in the ZIP.');
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+
+                btn.innerText = 'SENDING TO SERVER...';
+                
+                const filteredZipBlob = await newZip.generateAsync({type: 'blob'});
+                
+                const processedFile = new File([filteredZipBlob], "filtered_lists.zip", { type: "application/zip" });
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(processedFile);
+                document.getElementById('zipped_fscfai_actual').files = dataTransfer.files;
+
+                document.getElementById('fscfai_json_input').value = JSON.stringify(fscfai_refs);
+
+                this.dataset.ready = "true";
+                this.submit();
+
+            } catch (err) {
+                console.error(err);
+                alert('Error reading ZIP file: ' + err.message);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        });
+        const downloadBtn = document.getElementById('download');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', function() {
+                this.disabled = true;
+            });
+        }
+    </script>
+{% endblock %}
