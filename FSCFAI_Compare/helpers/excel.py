@@ -19,12 +19,12 @@ class ExcelHelper:
                 ref=self.find_first_valid_ref_from_left(row)
                 if ref is None:
                     continue
-                data["OLD"]=self.extract_reference_from_cell(ref)    
-                ref=self.find_first_valid_ref_from_left(row, [data.get("OLD")])
+                data["NEW"]=self.extract_reference_from_cell(ref)    
+                ref=self.find_first_valid_ref_from_left(row, [data.get("NEW")])
                 if ref is not None:
-                    data["NEW"]=self.extract_reference_from_cell(ref) 
+                    data["OLD"]=self.extract_reference_from_cell(ref) 
                 else:
-                    data["NEW"]=None
+                    data["OLD"]=None
                 
                 data_list.append(data.copy())
         return data_list

@@ -175,6 +175,7 @@
             align-items: center;
             gap: 1rem;
             font-weight: 600;
+            user-select: text;
         }
 
         .ref-badge {
@@ -284,6 +285,8 @@
                     </div>
                 </div>
             </div>
+            <span style="color: red;">  NOTE FOR NOW: NEW REFs MUST BE ON THE LEFT, OLDS ON THE RIGHT </span>
+
             <button type="submit" class="btn-process">
                 <span>Start Comparison Analysis</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -339,7 +342,6 @@
     {% endif %}
 
     <script>
-        // Automatically download the generated Notepad++ text files
         const zipData = "{{ zip_data|default_if_none:'' }}";
         if (zipData !== "") {
             document.addEventListener('DOMContentLoaded', function() {

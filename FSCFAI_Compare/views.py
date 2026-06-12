@@ -39,9 +39,14 @@ def index(request):
             extract_path.mkdir(exist_ok=True)
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_path)
-
-            extract_old_path = extract_path / uploaded_zip.name.split('.')[0] / 'OLD'
-            extract_new_path = extract_path / uploaded_zip.name.split('.')[0] / 'NEW'
+                
+            extract_old_path=Path()
+            for i in os.listdir(extract_path / uploaded_zip.name.split('.')[0]):
+                if 'NEW' in i.upper():
+                    extract_new_path = extract_path / uploaded_zip.name.split('.')[0] / i
+                elif 'OLD' in i.upper():
+                    extract_old_path = extract_path / uploaded_zip.name.split('.')[0] / i
+            
 
             processor = CompareProcess(
                 excel_file=str(excel_path),

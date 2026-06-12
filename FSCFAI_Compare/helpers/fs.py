@@ -42,7 +42,7 @@ class FsHelper:
         with open(str(output_file), "w", encoding='utf-8') as file_content: 
             file_content.write("\n".join(cleaned_lines))
             
-        print(output_file)
+        
         
 
 
