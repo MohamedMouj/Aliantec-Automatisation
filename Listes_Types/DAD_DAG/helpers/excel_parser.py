@@ -4,6 +4,7 @@ import openpyxl
 from rapidfuzz import process, fuzz
 import re
 from collections import Counter
+import math
 
 class excel:
     def __init__(self, filename, context=None):
@@ -11,19 +12,20 @@ class excel:
         self.wb = None
         self.refs_desc = {}
         self.context = context
+        self.refs_codes = {}
 
     def close(self):
         if self.wb:
             self.wb.close()
 
     def load(self):
-        self.wb=openpyxl.load_workbook(self.filename, data_only=True)
+        self.wb=openpyxl.load_workbook(self.filename, data_only=True, read_only=True)
 
 
     def detect_desc_col(self, ws):
         cols=[]
-        for row in ws:
-            for cell in row:
+        for row in ws[1:50]:
+            for cell in row[3:20]:
                 if cell.value is not None and 20 <= len(str(cell.value)):
                     cols.append(cell.column)
                     break
@@ -32,28 +34,82 @@ class excel:
             most_common_item = Counter(cols).most_common(1)[0][0]
         return most_common_item # Returns 1
 
+    # def temp(self):
+    #     self.load()
+    #     for ws in self.wb:
+    #         if ws.title in ["MINOR HARNESS", "Notice utilisation PTA PLM", "Annexe 1", "User manuel PTA PLM", "Annex 1(english)", "Notice d'utilisation HNCT", "SDP (LogicalDiagram)"] :
+    #             continue
+    #         self.detect_code_col(ws)
+    #     self.close()
+
+    def contains_code(self, value):
+        if value is None:
+            return False
+        text = str(value).strip()
+        
+        # 2. Match a highly adaptive code structure: 
+        # Look for any block of 4 to 6 uppercase alphanumeric characters, 
+        # followed by any punctuation symbol (+, /, -, parenthesis), and another code block.
+        pattern =  r'\b[A-Z0-9]{5}[&/+][A-Z0-9]{5}\b'  
+        
+        # re.IGNORECASE handles erratic lowercase/uppercase entries
+        # re.DOTALL ensures it reads past wrapped multi-line breaks inside a single Excel cell
+        return bool(re.search(pattern, text, re.IGNORECASE | re.DOTALL))
+
+
+    def detect_code_col(self, ws):
+        cols=[]
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.value is not None and self.contains_code(str(cell.value)):
+                    cols.append(cell.column)
+                    break
+                if len(cols)>=50:
+                    break
+        most_common_item = None
+        if cols:
+            most_common_item = Counter(cols).most_common(1)[0][0]
+        return most_common_item
+    
     def build_refs_desc_mapping(self):
         refs_desc = {}
-        fscf=self.context.fscfai_files.keys()
+        fscf = self.context.fscfai_files.keys()
+        
         for ws in self.wb:
-            if ws.title in ["MINOR HARNESS", "Notice utilisation PTA PLM", "Annexe 1", "User manuel PTA PLM", "Annex 1(english)", "Notice d'utilisation HNCT", "SDP (LogicalDiagram)"] :
+            if ws.title in ["MINOR HARNESS", "Notice utilisation PTA PLM", "Annexe 1", "User manuel PTA PLM", "Annex 1(english)", "Notice d'utilisation HNCT", "SDP (LogicalDiagram)"]:
                 continue
-            col_number = self.detect_desc_col(ws)
-            for row in ws.iter_rows(min_col=col_number, max_col=col_number):
                 
+            col_number = self.detect_desc_col(ws)
+            col_code = self.detect_code_col(ws)
+            
+            # Skip sheet if columns are not detected
+            if not col_number or not col_code:
+                continue
+            
+            for row in ws.iter_rows(min_col=col_number, max_col=col_number):
                 for cell in row:
-                    if cell.value==None or self.contains_forinfo(cell):
-                        continue
 
-                    ref_cell=self.get_ref_by_desc_cell(cell)
+                    if cell.value is None or self.contains_forinfo(cell):
+                        continue
+                    
+                    ref_cell = self.get_ref_by_desc_cell(cell)
                     if ref_cell:
-                        if ref_cell.font.strikethrough:
+                        if ref_cell.font and ref_cell.font.strikethrough:
                             continue
                         if str(ref_cell.value) not in fscf:
-                            ref_cell=self.get_ref_by_desc_cell(cell, str(ref_cell.value))
-                        if ref_cell:   
-                            refs_desc[str(ref_cell.value)] = str(cell.value)
-        self.refs_desc=refs_desc
+                            ref_cell = self.get_ref_by_desc_cell(cell, str(ref_cell.value))
+                        
+                        if ref_cell and ref_cell.value is not None: 
+                            ref_key = str(ref_cell.value)
+                            
+                            # Safely fetch the code cell value from its absolute coordinate
+                            code_val = ws.cell(row=cell.row, column=col_code).value
+                            
+                            self.refs_codes[ref_key] = str(code_val).strip() if code_val is not None else ""
+                            refs_desc[ref_key] = "".join(str(cell.value).strip().split("_")[1:])
+                            
+        self.refs_desc = refs_desc
+
     def search_ref(self, ref):
         for r in self.refs_desc.keys():
             if ref==r:
@@ -72,16 +128,18 @@ class excel:
     #     else:
     #         return False
     def contains_forinfo(self, cell):
-        
-        if cell:
-            for row in cell.parent.iter_rows(max_row=cell.row, min_row=cell.row):
-                for c in row:
-                    if c.value and ("forinfo" in str(c.value).lower() or "cancelled" in str(c.value).lower()):
+        # FIX 2: Use cell context to correctly navigate the worksheet structure
+        if cell and cell.parent:
+            ws = cell.parent
+            row_idx = cell.row
+            
+            # ws[row_idx] accurately loops through all columns for this specific row index
+            for c in ws[row_idx]:
+                if c.value:
+                    cell_str = str(c.value).lower()
+                    if "forinfo" in cell_str or "cancelled" in cell_str:
                         return True
         return False
-
-
-        PART_ID_RE = re.compile(r'\b[A-Z]{1,5}[0-9]{1,4}[A-Z]?\b')
         
 
         
@@ -116,17 +174,18 @@ class excel:
         
         scored=[]
         if 'DAD' not in query.upper():
-            scored = sorted(
-            ((c, fuzz.token_set_ratio(query.upper(), c)) for c in candidates),
-            key=lambda x: -x[1])
-        else:
-            scored = sorted(
-            ((c, fuzz.token_sort_ratio(query.upper(), c)) for c in candidates),
-            key=lambda x: -x[1])
-    
+            scored = process.extract(query.upper(), candidates, scorer=fuzz.token_set_ratio)
+        else:#ratio
+            scored = process.extract(query.upper(), candidates, scorer=fuzz.token_sort_ratio)
 
-        best_label, best_score = scored[0]
+        if math.isclose(scored[0][1], scored[1][1], abs_tol=3): 
+            candidates = [
+                c.upper() for r, c in self.refs_codes.items() if r != ref and 'DCx01' not in c]
+            query = re.sub(r'\bDAG\b', 'DAD', desc, flags=re.IGNORECASE)
+            scored = process.extract(query.upper(), candidates, scorer=fuzz.ratio)
 
+        best_label, best_score = scored[0][0], scored[0][1]
+            
        
         return best_label if best_score >= threshold else None
 
@@ -149,7 +208,7 @@ class excel:
     #                 continue
     #             next_value = str(next_cell.value)
     #             map_cell_desc[next_value] = next_cell
-    #             list_desc.append(next_value)
+    #             list_desc.52(next_value)
     #     best_match = None
     #     if('DAD' in cell_value.upper()):
     #         cleaned_list=[i for i in list_desc if 'DAD' not in i]
@@ -162,6 +221,7 @@ class excel:
     #         return None
     #     return map_cell_desc.get(best_match[0])
     def get_ref_by_desc_cell(self, desc_cell, jump_value=None):
+        # FIX: Only search within the same row as the description cell
         for row in desc_cell.parent.iter_rows(min_row=desc_cell.row, max_row=desc_cell.row):
             for cell in row:
                 if jump_value and str(cell.value)==jump_value:
@@ -219,6 +279,7 @@ class excel:
             return [ref_desc, target_desc, target_ref]
         return None
 # excel1= excel("C:/Users/User/OneDrive/Bureau/OV512  DAG DAD/OV512  DAG DAD/PTA_OV512E MCA_F0226.xlsm")
+# excel1.temp()
 # print(excel1.start("9872939080"))
 
     
