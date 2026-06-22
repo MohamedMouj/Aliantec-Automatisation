@@ -10,16 +10,15 @@ class excel:
     def __init__(self, filename, context=None):
         self.filename = filename
         self.wb = None
-        self.refs_desc = {}
+        self.refs_desc_code = {}
         self.context = context
-        self.refs_codes = {}
 
     def close(self):
         if self.wb:
             self.wb.close()
 
     def load(self):
-        self.wb=openpyxl.load_workbook(self.filename, data_only=True, read_only=True)
+        self.wb=openpyxl.load_workbook(self.filename, data_only=True)
 
 
     def detect_desc_col(self, ws):
@@ -64,15 +63,15 @@ class excel:
                 if cell.value is not None and self.contains_code(str(cell.value)):
                     cols.append(cell.column)
                     break
-                if len(cols)>=50:
-                    break
+            # FIX: Break outer loop once we have enough codes
+            if len(cols)>=50:
+                break
         most_common_item = None
         if cols:
             most_common_item = Counter(cols).most_common(1)[0][0]
         return most_common_item
     
     def build_refs_desc_mapping(self):
-        refs_desc = {}
         fscf = self.context.fscfai_files.keys()
         
         for ws in self.wb:
@@ -82,53 +81,70 @@ class excel:
             col_number = self.detect_desc_col(ws)
             col_code = self.detect_code_col(ws)
             
-            # Skip sheet if columns are not detected
             if not col_number or not col_code:
                 continue
             
-            for row in ws.iter_rows(min_col=col_number, max_col=col_number):
-                for cell in row:
-
-                    if cell.value is None or self.contains_forinfo(cell):
-                        continue
+            # FIX: Single sequential pass over rows. 
+            # In read_only=True mode, random access like ws[row_idx] or ws.cell() 
+            # causes openpyxl to restart the XML parser from the beginning.
+            for row in ws.iter_rows():
+                if col_number - 1 >= len(row) or col_code - 1 >= len(row):
+                    continue
                     
-                    ref_cell = self.get_ref_by_desc_cell(cell)
-                    if ref_cell:
-                        if ref_cell.font and ref_cell.font.strikethrough:
-                            continue
-                        if str(ref_cell.value) not in fscf:
-                            ref_cell = self.get_ref_by_desc_cell(cell, str(ref_cell.value))
-                        
-                        if ref_cell and ref_cell.value is not None: 
-                            ref_key = str(ref_cell.value)
+                desc_cell = row[col_number - 1]
+                code_cell = row[col_code - 1]
+                
+                if desc_cell.value is None:
+                    continue
+                
+                # Check for forinfo in the current row sequentially
+                has_forinfo = False
+                for c in row:
+                    if c.value:
+                        val_str = str(c.value).lower()
+                        if "forinfo" in val_str or "cancelled" in val_str:
+                            has_forinfo = True
+                            break
+                if has_forinfo:
+                    continue
+                
+                # Find the 10-digit references in the current row sequentially
+                ref_cell = None
+                fallback_ref_cell = None
+                for c in row:
+                    if c.value is not None and re.match(r"\d{10}", str(c.value)) and c.fill.start_color.rgb != "FF7DE1F5":
+                        if ref_cell is None:
+                            ref_cell = c
+                        elif fallback_ref_cell is None:
+                            fallback_ref_cell = c
+                            break
                             
-                            # Safely fetch the code cell value from its absolute coordinate
-                            code_val = ws.cell(row=cell.row, column=col_code).value
-                            
-                            self.refs_codes[ref_key] = str(code_val).strip() if code_val is not None else ""
-                            refs_desc[ref_key] = "".join(str(cell.value).strip().split("_")[1:])
-                            
-        self.refs_desc = refs_desc
+                if not ref_cell:
+                    continue
+                    
+                if getattr(ref_cell, 'font', None) and getattr(ref_cell.font, 'strikethrough', False):
+                    continue
+                    
+                if str(ref_cell.value) not in fscf and fallback_ref_cell:
+                    ref_cell = fallback_ref_cell
+                
+                if ref_cell and ref_cell.value is not None:
+                    ref_key = str(ref_cell.value)
+                    code_val = code_cell.value
+                    
+                    self.refs_desc_code[ref_key] = str(code_val).strip()+str(desc_cell.value).strip()
+
 
     def search_ref(self, ref):
-        for r in self.refs_desc.keys():
+        for r in self.refs_desc_code.keys():
             if ref==r:
-                return r, self.refs_desc[r]
+                return r, self.refs_desc_code[r]
         return None
 
     def get_ref_name(self, ref):
         return self.refs_desc.get(ref.value) if ref else None
 
-    # def search_sheet(self, cell):
-    #     sheet_title = cell.parent.title
-    #     if "DAD" in sheet_title:
-    #         return sheet_title.replace("DAD", "DAG")
-    #     elif "DAG" in sheet_title:
-    #         return sheet_title.replace("DAG", "DAD")
-    #     else:
-    #         return False
     def contains_forinfo(self, cell):
-        # FIX 2: Use cell context to correctly navigate the worksheet structure
         if cell and cell.parent:
             ws = cell.parent
             row_idx = cell.row
@@ -143,18 +159,18 @@ class excel:
         
 
         
-
-    
+    def get_code_by_ref():
+        pass
 
     
     def find_matched_desc(self, ref, desc, threshold=40):
         if 'DAG' in desc.upper():
             candidates = [
-                d.upper() for r, d in self.refs_desc.items() if r != ref and 'DAG' not in d
+                d.upper() for r, d in self.refs_desc_code.items() if r != ref and 'DAD' in d
             ]
         else:
             candidates = [
-                d.upper() for r, d in self.refs_desc.items() if r != ref and 'DAG' not in d and 'DAD' not in d
+                d.upper() for r, d in self.refs_desc_code.items() if r != ref and 'DAG' not in d and 'DAD' not in d
             ]
         if not candidates:
             return None
@@ -173,53 +189,35 @@ class excel:
         query = re.sub(r'\bDAG\b', 'DAD', desc, flags=re.IGNORECASE)
         
         scored=[]
-        if 'DAD' not in query.upper():
-            scored = process.extract(query.upper(), candidates, scorer=fuzz.token_set_ratio)
-        else:#ratio
-            scored = process.extract(query.upper(), candidates, scorer=fuzz.token_sort_ratio)
+        if "DAD" not in query.upper():
+            scored = process.extract(query.upper(), candidates, scorer=fuzz.partial_ratio, limit=10)
+        else:
+            scored = process.extract(query.upper(), candidates, scorer=fuzz.ratio, limit=10)
 
-        if math.isclose(scored[0][1], scored[1][1], abs_tol=3): 
-            candidates = [
-                c.upper() for r, c in self.refs_codes.items() if r != ref and 'DCx01' not in c]
-            query = re.sub(r'\bDAG\b', 'DAD', desc, flags=re.IGNORECASE)
-            scored = process.extract(query.upper(), candidates, scorer=fuzz.ratio)
 
-        best_label, best_score = scored[0][0], scored[0][1]
+        ref_most=self.get_ref_by_desc(scored[0][0])
+        # if math.isclose(scored[0][1], scored[1][1], abs_tol=3):
+        #     sd_list=[]
+        #     map_ref_code={}
+        #     code_ref_most=self.refs_codes.get(ref_most)
+        #     sd_list.append(code_ref_most)
+        #     code_search=self.refs_codes.get(ref)
+        #     for i in range(1, 10):
+        #         ref=self.get_ref_by_desc(scored[i][0])
+        #         code=self.refs_codes.get(ref)
+        #         sd_list.append(code)
+        #         map_ref_code[code]=ref
+
+
+        #     if len(sd_list)>0:
+        #         scored = process.extract(code_search.upper(), sd_list, scorer=fuzz.ratio)
+        #         ref_most=map_ref_code.get(scored[0][0])
+
+        best_score = scored[0][1]
             
        
-        return best_label if best_score >= threshold else None
+        return ref_most if best_score >= threshold else None
 
-
-
-    # def find_target_cell_column(self, cell):
-    #     col_idx = cell.column
-    #     # if isinstance(col_idx, str):
-    #     #     from openpyxl.utils import column_index_from_string
-    #     #     col_idx = column_index_from_string(col_idx)
-    #     cell_value = str(cell.value)
-    #     list_desc = []
-    #     map_cell_desc = {}
-    #     worksheet = cell.parent
-    #     column_cells = list(worksheet.iter_cols(min_col=col_idx, max_col=col_idx))[0]
-    #     for col_cell in column_cells:
-    #         next_cell = worksheet.cell(row=col_cell.row + 1, column=col_idx)
-    #         if next_cell.value is not None:
-    #             if cell.coordinate == next_cell.coordinate or self.contains_forinfo(next_cell):
-    #                 continue
-    #             next_value = str(next_cell.value)
-    #             map_cell_desc[next_value] = next_cell
-    #             list_desc.52(next_value)
-    #     best_match = None
-    #     if('DAD' in cell_value.upper()):
-    #         cleaned_list=[i for i in list_desc if 'DAD' not in i]
-    #         best_match = process.extractOne(cell_value, cleaned_list, scorer=fuzz.WRatio)
-    #     elif('DAG' in cell_value.upper()):
-    #         cleaned_list=[i for i in list_desc if 'DAG' not in i]
-    #         best_match = process.extractOne(cell_value, cleaned_list, scorer=fuzz.WRatio)
-
-    #     if not best_match:
-    #         return None
-    #     return map_cell_desc.get(best_match[0])
     def get_ref_by_desc_cell(self, desc_cell, jump_value=None):
         # FIX: Only search within the same row as the description cell
         for row in desc_cell.parent.iter_rows(min_row=desc_cell.row, max_row=desc_cell.row):
@@ -230,8 +228,8 @@ class excel:
                     return cell
         return None
     def get_ref_by_desc(self, desc):
-        for r, d in self.refs_desc.items():
-            if desc==d.upper():
+        for r, d in self.refs_desc_code.items():
+            if desc.upper()==d.upper():
                 return r
             
     def get_fus_name(self, desc):
@@ -239,32 +237,6 @@ class excel:
             if desc[:2].upper()=='PR': return desc=='PR'
             if desc[:4].upper()=='EHAB': return desc[:5].upper()
             return None
-
-
-    # def find_desc_in_other_sheet(self, desc, sheet_name):
-    #     list_desc = []
-    #     map_cell_desc = {}
-    #     if sheet_name in self.wb.sheetnames:
-    #         column_cells = list(self.wb[sheet_name].iter_cols(min_col=desc.column, max_col=desc.column))[0]
-    #         for cell in column_cells:
-    #             # FIX 1: Ignore empty Excel cells entirely so they don't become the string "None"
-    #             if cell.value is None:
-    #                 continue
-                    
-    #             if self.contains_forinfo(cell):
-    #                 continue
-                    
-    #             cell_value = str(cell.value)
-    #             map_cell_desc[cell_value] = cell
-    #             list_desc.append(cell_value)
-
-    #     # FIX 2: Change scorer to token_set_ratio to force a strict word-to-word match
-    #     best_match = process.extractOne(str(desc.value), list_desc, scorer=fuzz.token_set_ratio)
-
-    #     if not best_match:
-    #         return None
-    #     return map_cell_desc.get(best_match[0])
-
         
     def start(self, ref, old_xml_path=None):
         ref_desc = self.search_ref(ref)
@@ -274,9 +246,8 @@ class excel:
         or ('LHD' in ref_desc[1].upper())):
                
         
-            target_desc = self.find_matched_desc(ref_desc[0], ref_desc[1]) if ref_desc else None
-            target_ref = self.get_ref_by_desc(target_desc) if target_desc else None
-            return [ref_desc, target_desc, target_ref]
+            target_ref = self.find_matched_desc(ref_desc[0], ref_desc[1]) if ref_desc else None
+            return [ref_desc, "TEST", target_ref]
         return None
 # excel1= excel("C:/Users/User/OneDrive/Bureau/OV512  DAG DAD/OV512  DAG DAD/PTA_OV512E MCA_F0226.xlsm")
 # excel1.temp()

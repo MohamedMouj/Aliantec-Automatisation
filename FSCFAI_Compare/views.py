@@ -40,12 +40,21 @@ def index(request):
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_path)
                 
-            extract_old_path=Path()
-            for i in os.listdir(extract_path / uploaded_zip.name.split('.')[0]):
-                if 'NEW' in i.upper():
-                    extract_new_path = extract_path / uploaded_zip.name.split('.')[0] / i
-                elif 'OLD' in i.upper():
-                    extract_old_path = extract_path / uploaded_zip.name.split('.')[0] / i
+            extract_old_path = None
+            extract_new_path = None
+            
+            # Find the NEW and OLD folders safely, regardless of root folder name
+            for path in extract_path.rglob('*'):
+                if path.is_dir():
+                    if 'NEW' in path.name.upper() and extract_new_path is None:
+                        extract_new_path = path
+                    elif 'OLD' in path.name.upper() and extract_old_path is None:
+                        extract_old_path = path
+            
+            if extract_old_path is None:
+                extract_old_path = Path()
+            if extract_new_path is None:
+                extract_new_path = Path()
             
 
             processor = CompareProcess(
