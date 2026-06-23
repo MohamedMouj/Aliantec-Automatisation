@@ -81,18 +81,18 @@ class excel:
             col_number = self.detect_desc_col(ws)
             col_code = self.detect_code_col(ws)
             
-            if not col_number or not col_code:
+            if not col_number:
                 continue
             
             # FIX: Single sequential pass over rows. 
             # In read_only=True mode, random access like ws[row_idx] or ws.cell() 
             # causes openpyxl to restart the XML parser from the beginning.
             for row in ws.iter_rows():
-                if col_number - 1 >= len(row) or col_code - 1 >= len(row):
+                if col_number - 1 >= len(row):
                     continue
                     
                 desc_cell = row[col_number - 1]
-                code_cell = row[col_code - 1]
+                code_cell = row[col_code - 1] if col_code else None
                 
                 if desc_cell.value is None:
                     continue
@@ -108,29 +108,29 @@ class excel:
                 if has_forinfo:
                     continue
                 
-                # Find the 10-digit references in the current row sequentially
                 ref_cell = None
-                fallback_ref_cell = None
                 for c in row:
-                    if c.value is not None and re.match(r"\d{10}", str(c.value)) and c.fill.start_color.rgb != "FF7DE1F5":
+                    if c.value is not None and re.match(r"\d{10}", str(c.value)) and (c.fill.start_color.rgb != "FF7DE1F5" or str(c.value) in self.context.all_xml_references) and str(c.value) in fscf:
                         if ref_cell is None:
                             ref_cell = c
-                        elif fallback_ref_cell is None:
-                            fallback_ref_cell = c
                             break
+                        
                             
                 if not ref_cell:
                     continue
                     
+                if code_cell is None:
+                    code_cell = self.context.fscfai_files[str(ref_cell.value)]
+
                 if getattr(ref_cell, 'font', None) and getattr(ref_cell.font, 'strikethrough', False):
                     continue
                     
-                if str(ref_cell.value) not in fscf and fallback_ref_cell:
-                    ref_cell = fallback_ref_cell
+                # if str(ref_cell.value) not in fscf and fallback_ref_cell:
+                #     ref_cell = fallback_ref_cell
                 
                 if ref_cell and ref_cell.value is not None:
                     ref_key = str(ref_cell.value)
-                    code_val = code_cell.value
+                    code_val = code_cell.value if hasattr(code_cell, "value") else code_cell
                     
                     self.refs_desc_code[ref_key] = str(code_val).strip()+str(desc_cell.value).strip()
 
@@ -242,7 +242,7 @@ class excel:
         ref_desc = self.search_ref(ref)
         if ref_desc\
         and ((('DAG' in ref_desc[1].upper()) and not('DAD' in ref_desc[1].upper())) \
-        or ('50-PB' in old_xml_path or '60-PA' in old_xml_path) \
+        or ('50-PB' in old_xml_path or '60-PA' in old_xml_path or '62-PRG' in old_xml_path or '67-PRD' in old_xml_path) \
         or ('LHD' in ref_desc[1].upper())):
                
         

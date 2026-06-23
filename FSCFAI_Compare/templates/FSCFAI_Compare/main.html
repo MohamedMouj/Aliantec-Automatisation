@@ -342,7 +342,8 @@
     {% endif %}
 
     <script>
-        const zipData = "{{ zip_data|default_if_none:'' }}";
+        if(zip_data !== ""){
+            const zipData = "{{ zip_data|default_if_none:'' }}";
         if (zipData !== "") {
             document.addEventListener('DOMContentLoaded', function() {
                 const link = document.createElement("a");
@@ -353,6 +354,8 @@
                 document.body.removeChild(link);
             });
         }
+        }
+        
 
         function toggleDiff(header) {
             const item = header.parentElement;
