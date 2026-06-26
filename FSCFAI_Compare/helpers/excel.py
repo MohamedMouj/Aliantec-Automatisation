@@ -12,22 +12,24 @@ class ExcelHelper:
             self.wb.close()
 
     def get_all_ref_couples(self):
-        data_list=[]
+        data_by_sheet = {}
         for sheet in self.wb.worksheets:
+            sheet_rows = []
             for row in sheet.iter_rows():
-                data=dict()
-                ref=self.find_first_valid_ref_from_left(row)
+                data = dict()
+                ref = self.find_first_valid_ref_from_left(row)
                 if ref is None:
                     continue
-                data["NEW"]=self.extract_reference_from_cell(ref)    
-                ref=self.find_first_valid_ref_from_left(row, [data.get("NEW")])
+                data["NEW"] = self.extract_reference_from_cell(ref)
+                ref = self.find_first_valid_ref_from_left(row, [data.get("NEW")])
                 if ref is not None:
-                    data["OLD"]=self.extract_reference_from_cell(ref) 
+                    data["OLD"] = self.extract_reference_from_cell(ref)
                 else:
-                    data["OLD"]=None
-                
-                data_list.append(data.copy())
-        return data_list
+                    data["OLD"] = None
+                sheet_rows.append(data.copy())
+            if sheet_rows:
+                data_by_sheet[sheet.title] = sheet_rows
+        return data_by_sheet
             
     def extract_reference_from_cell(self, cell):
        

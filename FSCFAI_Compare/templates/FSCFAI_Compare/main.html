@@ -191,7 +191,8 @@
             transition: var(--transition);
         }
 
-        .result-item.active .arrow-icon {
+        /* Direct-child selectors prevent parent toggle from cascading into nested toggles */
+        .result-item.active > .result-header > .arrow-icon {
             transform: rotate(180deg);
         }
 
@@ -203,8 +204,71 @@
             overflow-x: auto;
         }
 
-        .result-item.active .diff-content {
+        .result-item.active > .diff-content {
             display: block;
+        }
+
+        /* Sheet-level (outer) accordion styles */
+        .sheet-item {
+            background: var(--surface);
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            border: 2px solid var(--primary);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .sheet-header {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            background: var(--primary-light);
+        }
+
+        .sheet-header:hover {
+            background: var(--primary-light);
+            filter: brightness(0.95);
+        }
+
+        .sheet-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .sheet-count-badge {
+            background: var(--primary);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 99px;
+        }
+
+        .sheet-content {
+            display: none;
+            padding: 1rem 1.25rem;
+            border-top: 2px solid var(--primary);
+        }
+
+        .sheet-item.active > .sheet-content {
+            display: block;
+        }
+
+        .sheet-item.active > .sheet-header > .arrow-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Nested ref items inside sheet */
+        .sheet-content .result-item {
+            margin-bottom: 0.75rem;
+            border-left: 3px solid var(--border);
         }
 
         /* Diff Table Styling */
@@ -304,23 +368,42 @@
     {% if results %}
     <section class="results-container">
         <h2 style="margin-bottom: 2rem; font-weight: 700;">Comparison Analysis</h2>
-        
-        {% for result in results %}
-        <div class="result-item">
-            <div class="result-header" onclick="toggleDiff(this)">
-                <div class="ref-pair">
-                    <span class="ref-badge">OLD</span>
-                    <span>{{ result.old_ref }}</span>
-                    <span style="color: var(--text-muted); font-weight: 400;">→</span>
-                    <span class="ref-badge">NEW</span>
-                    <span>{{ result.new_ref }}</span>
+
+        {# ── LEVEL 1: one accordion block per Excel sheet ── #}
+        {% for sheet_name, sheet_results in results.items %}
+        <div class="sheet-item">
+            <div class="sheet-header" onclick="toggleItem(this)">
+                <div class="sheet-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    Sheet: {{ sheet_name }}
+                    <span class="sheet-count-badge">{{ sheet_results|length }} pair{{ sheet_results|length|pluralize }}</span>
                 </div>
                 <div class="arrow-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                 </div>
             </div>
-            <div class="diff-content">
-                {{ result.diff_content|safe }}
+
+            <div class="sheet-content">
+                {# ── LEVEL 2: one accordion per OLD → NEW ref pair inside the sheet ── #}
+                {% for result in sheet_results %}
+                <div class="result-item">
+                    <div class="result-header" onclick="toggleItem(this)">
+                        <div class="ref-pair">
+                            <span class="ref-badge">OLD</span>
+                            <span>{{ result.old_ref }}</span>
+                            <span style="color: var(--text-muted); font-weight: 400;">→</span>
+                            <span class="ref-badge">NEW</span>
+                            <span>{{ result.new_ref }}</span>
+                        </div>
+                        <div class="arrow-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                        </div>
+                    </div>
+                    <div class="diff-content">
+                        {{ result.diff_content|safe }}
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
         {% endfor %}
@@ -356,7 +439,7 @@
         }
         
 
-        function toggleDiff(header) {
+        function toggleItem(header) {
             const item = header.parentElement;
             item.classList.toggle('active');
         }

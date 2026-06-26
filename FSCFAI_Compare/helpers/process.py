@@ -31,37 +31,38 @@ class CompareProcess:
 
     def start(self):
         all_refs_couples = self.excel_helper.get_all_ref_couples()
-        results = []
-        
-        for data in all_refs_couples:
-            new_ref = data.get("NEW")
-            old_ref = data.get("OLD")
-            
-            if not old_ref or not new_ref:
-                continue
+        # results is now {sheet_name: [ {new_ref, old_ref, diff_content}, ... ]}
+        results = {}
 
-            old_fscfai = self.fs_old.find_fscfai_files(old_ref)
-            new_fscfai = self.fs_new.find_fscfai_files(new_ref)
+        for sheet_name, couples in all_refs_couples.items():
+            sheet_results = []
+            for data in couples:
+                new_ref = data.get("NEW")
+                old_ref = data.get("OLD")
 
-            if old_fscfai and new_fscfai:
-                list1, list2, f1, f2 = self.match(old_fscfai, new_fscfai)
+                if not old_ref or not new_ref:
+                    continue
 
-                self.fs_old.write_to_txt_file(list1, f1)
-                self.fs_new.write_to_txt_file(list2, f2)
-                
-                diff_table = self.generate_diff_table(list1, list2, f1, f2)
-                
-                results.append({
-                    "new_ref": new_ref,
-                    "old_ref": old_ref,
-                    "diff_content": diff_table
-                })
-            else:
-                if not old_fscfai:
+                old_fscfai = self.fs_old.find_fscfai_files(old_ref)
+                new_fscfai = self.fs_new.find_fscfai_files(new_ref)
 
-                    pass
-                if not new_fscfai:
-                    pass
+                if old_fscfai and new_fscfai:
+                    list1, list2, f1, f2 = self.match(old_fscfai, new_fscfai)
+
+                    self.fs_old.write_to_txt_file(list1, f1)
+                    self.fs_new.write_to_txt_file(list2, f2)
+
+                    diff_table = self.generate_diff_table(list1, list2, f1, f2)
+
+                    sheet_results.append({
+                        "new_ref": new_ref,
+                        "old_ref": old_ref,
+                        "diff_content": diff_table
+                    })
+
+            if sheet_results:
+                results[sheet_name] = sheet_results
+
         return results
             
     def generate_diff_table(self, list1, list2, f1, f2):
