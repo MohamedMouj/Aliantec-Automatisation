@@ -13,8 +13,8 @@ class CompareProcess:
         self.new_folder = new_folder
         self.output_dir = Path(output_dir) if output_dir else Path.cwd()
         self.excel_helper = ExcelHelper(excel_file)
-        self.fs_old = FsHelper(old_folder)
-        self.fs_new = FsHelper(new_folder)
+        self.fs_old = FsHelper(old_folder, self.output_dir)
+        self.fs_new = FsHelper(new_folder, self.output_dir)
 
     def close(self):
         if hasattr(self, 'excel_helper'):

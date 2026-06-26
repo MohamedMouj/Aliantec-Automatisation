@@ -57,20 +57,24 @@ def index(request):
                 extract_new_path = Path()
             
 
+            output_dir = extract_path / 'output'
+            output_dir.mkdir(exist_ok=True)
+
             processor = CompareProcess(
                 excel_file=str(excel_path),
                 old_folder=str(extract_old_path),
                 new_folder=str(extract_new_path),
+                output_dir=str(output_dir)
             )
             results = processor.start()
 
-            # Build the output ZIP in memory
-            output_dir = extract_path / 'output'
-            if not output_dir.exists():
+            if not results:
                 return render(request, 'FSCFAI_Compare/main.html', {
-                    'error': 'Processing completed but no output directory was produced.'
+                    'results': results,
+                    'zip_data': ''
                 })
 
+            # Build the output ZIP in memory
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
                 for root, _, files in os.walk(output_dir):
@@ -86,10 +90,10 @@ def index(request):
             })
 
         except Exception as e:
-            return render(request, 'FSCFAI_Compare/main.html', {'error': str(e)})
+            return render(request, 'FSCFAI_Compare/main.html', {'error': str(e), 'zip_data': '', 'results': None})
 
         finally:
             # Always wipe the entire temp folder from disk
             shutil.rmtree(request_temp, ignore_errors=True)
 
-    return render(request, 'FSCFAI_Compare/main.html')
+    return render(request, 'FSCFAI_Compare/main.html', {'zip_data': '', 'results': None})

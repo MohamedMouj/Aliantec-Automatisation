@@ -2,7 +2,7 @@
 {% load static %}
 {% load render_table from django_tables2 %}
 
-{% block title %}Aliantec Toolkit | Projet Project Processing{% endblock %}
+{% block title %}Aliantec Toolkit | DAD_DAG Processing{% endblock %}
 
 {% block extra_css %}
     <link href="{% static 'css/listes-types.css' %}" rel="stylesheet">
@@ -13,7 +13,7 @@
             position: fixed;
             inset: 0;
             background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(4 px);
             z-index: 9999;
             flex-direction: column;
             align-items: center;
@@ -64,8 +64,8 @@
 
 {% block content %}
     <header class="page-header">
-        <h1>Projet Project List-Type Update</h1>
-        <p>Automated synchronization of Projet Project documents with PTA data.</p>
+        <h1>DAD_DAG List-Type Update</h1>
+        <p>Automated processing of DAD_DAG files.</p>
     </header>
 
     {% if error %}
@@ -77,17 +77,14 @@
     <div class="card form-card">
         <form method="post" enctype="multipart/form-data" id="uploadForm">
             {% csrf_token %}
-            <input type="hidden" name="fscfai_json" id="fscfai_json_input">
             
-            <div class="form-grid" style="display: flex; justify-content: center;">
-                <div class="field-group" style="width: 50%;">
-                    <label>FSCFAI (ZIP)</label>
-                    <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
-                        <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📦</div>
-                        <div class="text" style="font-weight: 600; color: var(--text-main);">Select Source ZIP</div>
-                        <small id="zip_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">FSCFAI File Collection (.zip)</small>
-                        <input type="file" name="zipped_fscfai" id="zipped_fscfai" accept=".zip" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
-                    </div>
+            <div class="field-group mb-8">
+                <label>FSCFAI (ZIP)</label>
+                <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
+                    <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📦</div>
+                    <div class="text" style="font-weight: 600; color: var(--text-main);">Select Source ZIP</div>
+                    <small class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">FSCFAI File Collection (.zip)</small>
+                    <input type="file" name="zipped_fscfai" id="zipped_fscfai_input" accept=".zip" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
                 </div>
             </div>
             
@@ -99,7 +96,7 @@
             </div>
             
             <button type="submit" class="btn-standard" id="btn-lancer_traitement" style="margin-top: 1.5rem;">
-                <span>Start Processing & Synchronization</span>
+                <span>Start Processing</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </button>
         </form>
@@ -108,7 +105,7 @@
     <div id="processing-overlay">
         <div class="spinner"></div>
         <h2 style="color: white; margin-bottom: 0.5rem;">Processing Documents...</h2>
-        <p style="color: rgba(255,255,255,0.7);">Synchronizing List-Types with PTA data.</p>
+        <p style="color: rgba(255,255,255,0.7);">Synchronizing List-Types with DAD_DAG processing.</p>
     </div>
 
     {% if processed %}
@@ -123,15 +120,15 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Total Analyzed</div>
-                <div class="stat-value">{{ summary.total }}</div>
+                <div class="stat-value">{{ summary.total|default:0 }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Matches</div>
-                <div class="stat-value">{{ summary.matches }}</div>
+                <div class="stat-value">{{ summary.matches|default:0 }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Updates</div>
-                <div class="stat-value">{{ summary.updates }}</div>
+                <div class="stat-value">{{ summary.updates|default:0 }}</div>
             </div>
         </div>
 
@@ -153,20 +150,21 @@
             </div>
         </div>
 
+        {% if has_download %}
         <div class="card text-center mt-8" style="border: 2px solid var(--primary-light); background: var(--primary-light);">
             <p class="mb-4"><strong>Download ready</strong></p>
             <a href="data:application/zip;base64,{{ zip_b64 }}" download="{{ zip_name }}" class="btn btn-primary" id="download">
                 Download Results (.zip)
             </a>
         </div>
+        {% endif %}
     </div>
     {% endif %}
 {% endblock %}
 
 {% block extra_js %}
     <script>
-        // File name display
-        document.getElementById('zipped_fscfai').addEventListener('change', function() {
+        document.getElementById('zipped_fscfai_input').addEventListener('change', function() {
             if (this.files[0]) {
                 const wrapper = this.parentElement;
                 const textEl = wrapper.querySelector('.text');
@@ -177,7 +175,6 @@
             }
         });
 
-        // Tab Navigation
         function openTab(evt, tabName) {
             let i, tabcontent, tablinks;
             tabcontent = document.getElementsByClassName("tab-pane");
@@ -193,7 +190,6 @@
             filterTable();
         }
 
-        // Table Filtering
         function filterTable() {
             let input = document.getElementById("searchInput");
             let filter = input.value.toUpperCase();
@@ -211,45 +207,19 @@
             }
         }
 
-        // Table Sorting
-        document.addEventListener('DOMContentLoaded', function() {
-            const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
-            const comparer = (idx, asc) => (a, b) => ((v1, v2) => 
-                v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2) ? v1 - v2 : v1.toString().localeCompare(v2)
-                )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
-
-            document.querySelectorAll('th').forEach(th => th.addEventListener('click', function() {
-                const table = th.closest('table');
-                const tbody = table.querySelector('tbody') || table;
-                const ArrayTr = Array.from(tbody.querySelectorAll('tr'));
-                this.asc = !this.asc;
-                ArrayTr.sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc))
-                    .forEach(tr => tbody.appendChild(tr));
-            }));
-        });
-    
-        // Form Submission Handler
         document.getElementById('uploadForm').addEventListener('submit', function(e){
-            const fscfai_folder_file = document.getElementById('zipped_fscfai').files[0];
+            const fscfai_folder_file = document.getElementById('zipped_fscfai_input').files[0];
             
             if(!fscfai_folder_file){
-                e.preventDefault();
                 alert('Please select a Listes-Types ZIP folder.');
+                e.preventDefault();
                 return;
             }
 
             const btn = document.getElementById('btn-lancer_traitement');
-            btn.innerText = 'SENDING TO SERVER...';
+            btn.innerText = 'PROCESSING...';
             btn.disabled = true;
             document.getElementById('processing-overlay').style.display = 'flex';
         });
-        
-        const downloadBtn = document.getElementById('download');
-        if(downloadBtn) {
-            downloadBtn.addEventListener('click', function() {
-                this.style.pointerEvents = 'none';
-                this.style.opacity = '0.5';
-            });
-        }
     </script>
 {% endblock %}

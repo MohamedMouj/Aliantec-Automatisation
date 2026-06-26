@@ -2,9 +2,10 @@ from pathlib import Path
 import re 
 
 class FsHelper:
-    def __init__(self, folder_path):
+    def __init__(self, folder_path, output_dir=None):
         self.folder_path = folder_path
         self.fscfai_files=list(Path(self.folder_path).rglob("*.fscfai"))
+        self.output_dir = output_dir
 
     def find_fscfai_files(self, ref):
         data_list = dict()
@@ -14,7 +15,7 @@ class FsHelper:
                 continue
             match = re.search(r"(\d{10})", f.name)
             if match and match.group(1) == ref:
-                with open(f, 'r') as file_content: 
+                with open(f, 'r', encoding='utf-8', errors='replace') as file_content: 
                     for line in file_content:
                         if not (line.strip()) : continue
                         if line.startswith("*E"): break
@@ -28,12 +29,16 @@ class FsHelper:
                             if f.name not in data_list:
                                 data_list[f.name] = []
                             data_list[f.name].append(line)
+                break
                             
         return data_list if data_list else None
 
     def write_to_txt_file(self, list_data, filename):
-        output_dir = Path(self.folder_path).parent.parent / "output"
-        output_dir.mkdir(exist_ok=True)
+        if self.output_dir:
+            output_dir = Path(self.output_dir)
+        else:
+            output_dir = Path(self.folder_path).parent.parent / "output"
+        output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / filename
 
         # Clean the lines: keep only actual lines, completely removing "NOT FOUND" placeholders

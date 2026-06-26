@@ -10,7 +10,7 @@ class excel:
     def __init__(self, filename, context=None):
         self.filename = filename
         self.wb = None
-        self.refs_desc_code = {}
+        self.refs_desc = {}
         self.context = context
 
     def close(self):
@@ -32,44 +32,6 @@ class excel:
         if cols:
             most_common_item = Counter(cols).most_common(1)[0][0]
         return most_common_item # Returns 1
-
-    # def temp(self):
-    #     self.load()
-    #     for ws in self.wb:
-    #         if ws.title in ["MINOR HARNESS", "Notice utilisation PTA PLM", "Annexe 1", "User manuel PTA PLM", "Annex 1(english)", "Notice d'utilisation HNCT", "SDP (LogicalDiagram)"] :
-    #             continue
-    #         self.detect_code_col(ws)
-    #     self.close()
-
-    def contains_code(self, value):
-        if value is None:
-            return False
-        text = str(value).strip()
-        
-        # 2. Match a highly adaptive code structure: 
-        # Look for any block of 4 to 6 uppercase alphanumeric characters, 
-        # followed by any punctuation symbol (+, /, -, parenthesis), and another code block.
-        pattern =  r'\b[A-Z0-9]{5}[&/+][A-Z0-9]{5}\b'  
-        
-        # re.IGNORECASE handles erratic lowercase/uppercase entries
-        # re.DOTALL ensures it reads past wrapped multi-line breaks inside a single Excel cell
-        return bool(re.search(pattern, text, re.IGNORECASE | re.DOTALL))
-
-
-    def detect_code_col(self, ws):
-        cols=[]
-        for row in ws.iter_rows():
-            for cell in row:
-                if cell.value is not None and self.contains_code(str(cell.value)):
-                    cols.append(cell.column)
-                    break
-            # FIX: Break outer loop once we have enough codes
-            if len(cols)>=50:
-                break
-        most_common_item = None
-        if cols:
-            most_common_item = Counter(cols).most_common(1)[0][0]
-        return most_common_item
     
     def build_refs_desc_mapping(self):
         fscf = self.context.fscfai_files.keys()
@@ -79,7 +41,6 @@ class excel:
                 continue
                 
             col_number = self.detect_desc_col(ws)
-            col_code = self.detect_code_col(ws)
             
             if not col_number:
                 continue
@@ -92,7 +53,6 @@ class excel:
                     continue
                     
                 desc_cell = row[col_number - 1]
-                code_cell = row[col_code - 1] if col_code else None
                 
                 if desc_cell.value is None:
                     continue
@@ -119,9 +79,7 @@ class excel:
                 if not ref_cell:
                     continue
                     
-                if code_cell is None:
-                    code_cell = self.context.fscfai_files[str(ref_cell.value)]
-
+                
                 if getattr(ref_cell, 'font', None) and getattr(ref_cell.font, 'strikethrough', False):
                     continue
                     
@@ -130,15 +88,14 @@ class excel:
                 
                 if ref_cell and ref_cell.value is not None:
                     ref_key = str(ref_cell.value)
-                    code_val = code_cell.value if hasattr(code_cell, "value") else code_cell
                     
-                    self.refs_desc_code[ref_key] = str(code_val).strip()+str(desc_cell.value).strip()
+                    self.refs_desc[ref_key] = str(desc_cell.value).strip()
 
 
     def search_ref(self, ref):
-        for r in self.refs_desc_code.keys():
+        for r in self.refs_desc.keys():
             if ref==r:
-                return r, self.refs_desc_code[r]
+                return r, self.refs_desc[r]
         return None
 
     def get_ref_name(self, ref):
@@ -156,21 +113,15 @@ class excel:
                     if "forinfo" in cell_str or "cancelled" in cell_str:
                         return True
         return False
-        
-
-        
-    def get_code_by_ref():
-        pass
-
     
     def find_matched_desc(self, ref, desc, threshold=40):
         if 'DAG' in desc.upper():
             candidates = [
-                d.upper() for r, d in self.refs_desc_code.items() if r != ref and 'DAD' in d
+                d.upper() for r, d in self.refs_desc.items() if r != ref and 'DAD' in d
             ]
         else:
             candidates = [
-                d.upper() for r, d in self.refs_desc_code.items() if r != ref and 'DAG' not in d and 'DAD' not in d
+                d.upper() for r, d in self.refs_desc.items() if r != ref and 'DAG' not in d and 'DAD' not in d
             ]
         if not candidates:
             return None
@@ -196,23 +147,7 @@ class excel:
 
 
         ref_most=self.get_ref_by_desc(scored[0][0])
-        # if math.isclose(scored[0][1], scored[1][1], abs_tol=3):
-        #     sd_list=[]
-        #     map_ref_code={}
-        #     code_ref_most=self.refs_codes.get(ref_most)
-        #     sd_list.append(code_ref_most)
-        #     code_search=self.refs_codes.get(ref)
-        #     for i in range(1, 10):
-        #         ref=self.get_ref_by_desc(scored[i][0])
-        #         code=self.refs_codes.get(ref)
-        #         sd_list.append(code)
-        #         map_ref_code[code]=ref
-
-
-        #     if len(sd_list)>0:
-        #         scored = process.extract(code_search.upper(), sd_list, scorer=fuzz.ratio)
-        #         ref_most=map_ref_code.get(scored[0][0])
-
+       
         best_score = scored[0][1]
             
        
@@ -228,7 +163,7 @@ class excel:
                     return cell
         return None
     def get_ref_by_desc(self, desc):
-        for r, d in self.refs_desc_code.items():
+        for r, d in self.refs_desc.items():
             if desc.upper()==d.upper():
                 return r
             

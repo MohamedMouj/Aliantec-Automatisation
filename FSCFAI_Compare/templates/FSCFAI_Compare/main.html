@@ -342,8 +342,8 @@
     {% endif %}
 
     <script>
-        if(zip_data !== ""){
-            const zipData = "{{ zip_data|default_if_none:'' }}";
+       
+        const zipData = "{{ zip_data|default_if_none:'' }}";
         if (zipData !== "") {
             document.addEventListener('DOMContentLoaded', function() {
                 const link = document.createElement("a");
@@ -353,7 +353,6 @@
                 link.click();
                 document.body.removeChild(link);
             });
-        }
         }
         
 
