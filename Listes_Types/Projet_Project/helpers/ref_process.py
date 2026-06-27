@@ -34,8 +34,8 @@ class RefProcessor:
         """
         return {
             "".join(filename.split("_")[-3:]): filename
-            for filename in self.fs_obj.context.fscfai_files.values()
-            if filename not in existing_refs and "F2X" not in filename.upper()
+            for ref, filename in self.fs_obj.context.fscfai_files.items()
+            if ref not in existing_refs and "F2X" not in filename.upper()
         }
 
     def get_fn(self, desc: str) -> str | None:
@@ -174,7 +174,7 @@ class RefProcessor:
     def run(self) -> tuple[list[dict], dict, str]:
         current_references_data = self.xml_obj.get_references()
         total_refs   = len(current_references_data)
-        existing_refs = [item["old_val"] for item in current_references_data]
+        existing_refs = [item["ref"] for item in current_references_data]
 
         self.cleaned_list = self._build_cleaned_list(existing_refs)
 
