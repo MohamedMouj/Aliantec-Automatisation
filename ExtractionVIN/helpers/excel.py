@@ -93,6 +93,42 @@ class ExcelParser:
         rows=[r for r in rows if r in duplicate_rows]
         return rows[0] if rows else None
 
+    def get_data(self):
+        elec={}
+        imp={}
+        for row in self.main_sheet.iter_rows(min_row=3):
+    
+            for cell in row[8:]:
+                if cell.value is not None:
+                    if cell.column%2!=0:
+                        sommaire=str(row[0].value)
+                        schema=str(row[1].value)
+                        elec[str(cell.value)]=[schema, sommaire]
+                    else:
+                        sommaire=str(row[0].value)
+                        schema=str(row[1].value)
+                        imp[str(cell.value)]=[schema, sommaire]
+
+        return [elec,imp]
+
+
+
+    def write_elec_data(self, elec):
+        self.wb.create_sheet("ELEC")
+        ws=self.wb["ELEC"]
+        ws.append(["Sommaire", "Schema", "ELEC"])
+        for code, data in elec.items():
+            ws.append([data[0], data[1], code])
+
+
+    def write_imp_data(self, imp,):
+        self.wb.create_sheet("IMP")
+        ws=self.wb["IMP"]
+        ws.append(["Sommaire", "Schema", "IMP"])
+        for code, data in imp.items():
+            ws.append([data[0], data[1], code])
+
+
     def find_vin(self, row_idx):
         if row_idx is None:
             return None
@@ -149,17 +185,12 @@ class ExcelParser:
             #         "message": f"No VIN found for label '{lab}'"
             #     })
 
+        data=self.get_data()
+        self.write_elec_data(data[0])
+        self.write_imp_data(data[1])
+
         save_path = output_path or self.excel_file_name
         self.wb.save(save_path)
         return results, save_path
 
 
-# if __name__ == "__main__":
-#     excel = ExcelParser(
-#         r"C:\Users\User\OneDrive\Bureau\testVIN. - Copy.xlsx"
-#     )
-#     excel.load_excel()
-#     results, _ = excel.start()
-#     for r in results:
-#         print(f"Row {r['row']}: [{r['status']}] {r['label']} → {r['vin'] or r['message']}")
-#     excel.close()
