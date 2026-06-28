@@ -326,6 +326,12 @@
         <p>Old and New Reference Comparison</p>
     </header>
 
+    {% if error %}
+    <div class="alert alert-error">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
     <div class="upload-card">
         <form id="upload-form" method="post" enctype="multipart/form-data">
             {% csrf_token %}
@@ -348,8 +354,14 @@
                         <input type="file" name="input_zip" accept=".zip" required>
                     </div>
                 </div>
+                <div class="form-group" style="display: flex;">
+                    <div style="margin-right: 0.5em;">
+                        <input type="checkbox" name="new_ref_right">
+                    </div>
+                    <label>EXCEPTIONAL CASE:NEW REF ON THE RIGHT</label>
+
+                </div>
             </div>
-            <span style="color: red;">  NOTE FOR NOW: NEW REFs MUST BE ON THE LEFT, OLDS ON THE RIGHT </span>
 
             <button type="submit" class="btn-process">
                 <span>Start Comparison Analysis</span>

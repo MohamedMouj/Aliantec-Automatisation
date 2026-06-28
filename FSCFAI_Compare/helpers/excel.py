@@ -2,10 +2,11 @@ import openpyxl
 import re
 
 class ExcelHelper:
-    def __init__(self, excel_file):
+    def __init__(self, excel_file, right):
         self.excel_file = excel_file
         self.wb = openpyxl.load_workbook(self.excel_file, read_only=True, data_only=True)
         self.data=None
+        self.parse_right=right
 
     def close(self):
         if hasattr(self, 'wb'):
@@ -20,8 +21,11 @@ class ExcelHelper:
                 ref = self.find_first_valid_ref_from_left(row)
                 if ref is None:
                     continue
+
+            
                 data["NEW"] = self.extract_reference_from_cell(ref)
                 ref = self.find_first_valid_ref_from_left(row, [data.get("NEW")])
+
                 if ref is not None:
                     data["OLD"] = self.extract_reference_from_cell(ref)
                 else:
@@ -49,11 +53,10 @@ class ExcelHelper:
         return None
 
     def find_first_valid_ref_from_left(self, row, jump_values=None):
-        aux=True
-        for cell in row:
+        cells = reversed(row) if self.parse_right else row
+        for cell in cells:
             cur = self.extract_reference_from_cell(cell)
-            if jump_values and cur in jump_values and aux:
-                aux=False
+            if jump_values and cur in jump_values:
                 continue
             if cur is not None:
                 return cell

@@ -17,31 +17,6 @@ from .helpers.process import CompareProcess
 # --------------------------------------------------------------------------- #
  
 def _find_folder(root: Path, keyword: str) -> Path:
-    """
-    Return the *shallowest* directory under *root* whose name contains
-    *keyword* (case-insensitive).
- 
-    WHY SHALLOWEST:
-      On Linux the filesystem is case-sensitive and `Path.rglob()` yields
-      entries in inode order, which is non-deterministic across runs and
-      machines.  A ZIP like::
- 
-          root/
-            NEW/          ← correct target
-              subfolder_NEW/   ← would also match 'NEW'
- 
-      could make the original first-match logic pick `subfolder_NEW` instead
-      of `NEW`.  Taking the entry with the fewest path components always
-      selects the top-most (intended) folder regardless of traversal order.
- 
-    WHY NOT Path() AS FALLBACK:
-      The original code fell back to ``Path()`` when no folder was found.
-      On Linux, ``Path()`` resolves to the process's current working
-      directory, which *always* exists.  ``CompareProcess`` would then
-      silently read from cwd, producing garbage results with no error.
-      We raise ``ValueError`` instead so the ``except`` block surfaces a
-      clear message to the user.
-    """
     candidates = [
         p for p in root.rglob("*")
         if p.is_dir() and keyword.upper() in p.name.upper()
@@ -67,6 +42,7 @@ def index(request):
     ):
         uploaded_zip   = request.FILES["input_zip"]
         uploaded_excel = request.FILES["input_excel"]
+        right=request.POST.get("new_ref_right")
  
         temp_base = Path(__file__).resolve().parent / "temp"
         temp_base.mkdir(exist_ok=True)
@@ -117,6 +93,7 @@ def index(request):
                 old_folder=str(extract_old_path),
                 new_folder=str(extract_new_path),
                 output_dir=str(output_dir),
+                right=right
             )
             results = processor.start()
  
@@ -168,11 +145,11 @@ def index(request):
                 "results":  None,
             })
         finally:
-            # Always wipe the entire per-request temp directory
             shutil.rmtree(request_temp, ignore_errors=True)
  
     return render(request, "FSCFAI_Compare/main.html", {
         "zip_data": "",
         "results":  None,
     })
+
  

@@ -64,7 +64,6 @@ def projet_project(request):
                         zip_b64 = base64.b64encode(f.read()).decode('ascii')
                     final_zip_name = f"{session_id}.zip"
 
-            # Build result tables
             table_updates = UpdateTable(results.get('all_grid_data', []))
             table_additions  = AdditionTable(results.get('addition_data', []))
             table_deletions  = DeletionTable(results.get('deletion_data', []))
@@ -89,7 +88,6 @@ def projet_project(request):
             return render(request, 'Listes_Types/Projet_Project/index.html', {'error': str(e)})
 
         finally:
-            # Always wipe the entire session temp directory from disk
             try:
                 shutil.rmtree(safe_session_dir, ignore_errors=True)
                 if os.path.exists(extracted_folder):

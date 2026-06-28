@@ -144,7 +144,7 @@
                 <div class="stat-value">{{ summary.updates }}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">To Delete</div>
+                <div class="stat-label">Deletes</div>
                 <div class="stat-value" style="color: var(--error);">{{ summary.deletes }}</div>
             </div>
             <div class="stat-card">
@@ -156,8 +156,9 @@
         <div class="tab-container mt-8">
             <div class="tab-nav">
                 <div class="tab-link active" onclick="openTab(event, 'tab1')">Updates</div>
+                <div class="tab-link" onclick="openTab(event, 'tab3')">Deleted</div>
                 <div class="tab-link" onclick="openTab(event, 'tab2')">To Add</div>
-                <div class="tab-link" onclick="openTab(event, 'tab3')">To Delete</div>
+                
             </div>
 
             <div class="search-bar">

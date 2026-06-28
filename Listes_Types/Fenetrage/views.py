@@ -9,14 +9,10 @@ from django.conf import settings
 from pathlib import Path
 from ..tables import UpdateTable, AdditionTable, DeletionTable
 from django_tables2 import RequestConfig
-from ..services.orchestrator import Orchestrator
+from .services.orchestrator import Orchestrator
 
 
 def get_safe_path(path_str):
-    """
-    Add Windows Long Path prefix if needed.
-    On Linux/Hostinger VPS this is a no-op.
-    """
     abs_path = os.path.abspath(path_str)
     if os.name == 'nt' and not abs_path.startswith('\\\\?\\'):
         return '\\\\?\\' + abs_path
@@ -24,14 +20,13 @@ def get_safe_path(path_str):
 
 
 def fenetrage(request):
-    """Fenetrage list-type processing view."""
     if request.method == 'POST' and request.FILES.get('pta_file') and request.FILES.get('zipped_fscfai'):
         pta_file = request.FILES['pta_file']
         zip_file = request.FILES['zipped_fscfai']
 
         session_id = uuid.uuid4().hex[:8]
 
-        base_temp_dir = Path(__file__).resolve().parent.parent / 'temp'
+        base_temp_dir = Path(__file__).resolve().parent / 'temp'
         session_dir = base_temp_dir / session_id
 
         safe_session_dir = Path(get_safe_path(str(session_dir)))
@@ -104,12 +99,10 @@ def fenetrage(request):
 
             # Store the ZIP buffer in the session as base64 so the auto-download
             # endpoint can serve it without hitting the filesystem again.
+            zip_b64 = ""
             if zip_buffer:
                 import base64
-                request.session['listes_types_zip_data'] = base64.b64encode(
-                    zip_buffer.getvalue()
-                ).decode('utf-8')
-                request.session['listes_types_zip_name'] = final_zip_name
+                zip_b64 = base64.b64encode(zip_buffer.getvalue()).decode('utf-8')
 
             context = {
                 'table_updates':    table_updates,
@@ -120,6 +113,8 @@ def fenetrage(request):
                 'processed':        True,
                 'xml_count':        results['total_summary'].get('xml_count', []),
                 'output_path':      final_zip_name,
+                'zip_b64':          zip_b64,
+                'zip_name':         final_zip_name,
             }
 
             return render(request, 'Listes_Types/Fenetrage/index.html', context)

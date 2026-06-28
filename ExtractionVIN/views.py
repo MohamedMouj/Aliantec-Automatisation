@@ -10,6 +10,7 @@ from .helpers.excel import ExcelParser
 def index(request):
     if request.method == 'POST' and request.FILES.get('input_excel'):
         uploaded_excel = request.FILES['input_excel']
+        
 
         temp_base = Path(__file__).resolve().parent / 'temp'
         temp_base.mkdir(exist_ok=True)
@@ -50,7 +51,6 @@ def index(request):
         except Exception as e:
             return render(request, 'ExtractionVIN/main.html', {'error_msg': f"Processing error: {e}"})
         finally:
-            # Always close the parser and wipe the entire temp folder from disk
             if parser:
                 parser.close()
             shutil.rmtree(request_temp, ignore_errors=True)

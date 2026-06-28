@@ -285,7 +285,6 @@ def finalize_review(request):
         context = _build_results_context(request, results, session_dir)
         return render(request, TEMPLATE, context)
     finally:
-        # Phase 2 is done – wipe the entire session directory.
         try:
             shutil.rmtree(session_dir, ignore_errors=True)
         except Exception:

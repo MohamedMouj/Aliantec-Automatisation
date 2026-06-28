@@ -21,33 +21,26 @@ class excel_parser():
             self.wb.close()
 
     def build_index(self):
-        """
-        Scans the workbook and builds a map of reference -> cell.
-        """
         for sheet in self.wb.worksheets:
             for row in sheet.iter_rows(max_col=26):
-                ref_cell = self.find_first_valid_ref(row)
-                if ref_cell is None:
+                ref_cell, ref_string = self.find_first_valid_ref(row)
+                if ref_cell is None and not ref_cell:
                     continue
-                    
-                ref_string = self.extract_reference_from_cell(ref_cell)
-                if ref_string:
-                    if ref_string in self.context.all_xml_references:
-                        if ref_string not in self.context.excel_index:
+                
+                if ref_string in self.context.all_xml_references:
+                    if ref_string not in self.context.excel_index:
+                        self.context.excel_index[ref_string] = ref_cell
+                else:
+                    found = False
+                    refs = []
+                    while not found:
+                        refs.append(ref_string)
+                        ref_cell, ref_string = self.find_first_valid_ref(row, refs) 
+                        if ref_cell is None:
+                            break
+                        if ref_string and ref_string in self.context.all_xml_references:
                             self.context.excel_index[ref_string] = ref_cell
-                    else:
-                        # Scan for other valid refs in the same row if multiple exist
-                        found = False
-                        refs = []
-                        while not found:
-                            refs.append(ref_string)
-                            ref_cell = self.find_first_valid_ref(row, refs) 
-                            if ref_cell is None:
-                                break
-                            ref_string = self.extract_reference_from_cell(ref_cell)
-                            if ref_string in self.context.all_xml_references:
-                                self.context.excel_index[ref_string] = ref_cell
-                                found = True
+                            found = True
 
     def find_first_valid_ref(self, row, jump_values=None):
         cells = reversed(row) if self.parse_right else row
@@ -56,8 +49,8 @@ class excel_parser():
             if jump_values and cur in jump_values:
                 continue
             if cur is not None:
-                return cell
-        return None
+                return cell, cur
+        return None, None
 
     def search_by_ref(self, ref):
         ref = str(ref).strip()
@@ -156,21 +149,23 @@ class excel_parser():
         return best_candidate
 
     def row_contains_red_cell(self, row, max_col=None):
+        c=0
         for cell in row:
             if max_col and cell.column > max_col:
-            
-                fill = cell.fill
-                if str(cell.value).lower() in ["carryover", "traite", "", "treated"] and not (hasattr(cell.font, 'strike') and cell.font.strike):
-                    break
-                if not fill:
-                    continue
+                break
+            fill = cell.fill
+            if str(cell.value).lower() in ["carryover", "traite", "", "treated"] and not (hasattr(cell.font, 'strike') and cell.font.strike):
+                break
+            if not fill:
+                continue
+                
+            if hasattr(fill, 'start_color') and fill.start_color:
+                color = str(fill.start_color.rgb).upper()
+                if color in ["FFFF0000", "FF0000"] or fill.start_color.index == 2:
+                    c+=1
+                    if c==2:
+                        return True
                     
-                if hasattr(fill, 'start_color') and fill.start_color:
-                    color = str(fill.start_color.rgb).upper()
-                    if color in ["FFFF0000", "FF0000"]:
-                        return True
-                    if fill.start_color.index == 2:
-                        return True
         return False
 
 
@@ -225,13 +220,18 @@ class excel_parser():
         #     return False
 
     def row_contains_strike_cell(self, row, max_col=None):
+        c=0
         for cell in row:
             if max_col and cell.column > max_col:
                 break
+            if cell.value ==None:
+                continue
             font = cell.font
             if not font: continue
             if hasattr(font, 'strike') and font.strike:
-                return True
+                c+=1
+                if c==2:
+                    return True
         return False
 
     def row_contains_cancelled_status(self, row, max_col=None):

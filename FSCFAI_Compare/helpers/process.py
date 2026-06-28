@@ -7,12 +7,12 @@ import re
 from rapidfuzz import process, fuzz
 
 class CompareProcess:
-    def __init__(self, excel_file, old_folder, new_folder, output_dir=None):
+    def __init__(self, excel_file, old_folder, new_folder,right, output_dir=None):
         self.excel_file = excel_file
         self.old_folder = old_folder
         self.new_folder = new_folder
         self.output_dir = Path(output_dir) if output_dir else Path.cwd()
-        self.excel_helper = ExcelHelper(excel_file)
+        self.excel_helper = ExcelHelper(excel_file, right)
         self.fs_old = FsHelper(old_folder, self.output_dir)
         self.fs_new = FsHelper(new_folder, self.output_dir)
 
