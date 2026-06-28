@@ -189,12 +189,7 @@
             </div>
         </div>
 
-        <div class="card text-center mt-8" style="border: 2px solid var(--primary-light); background: var(--primary-light);">
-            <p class="mb-4"><strong>Download ready</strong></p>
-            <a href="{% url 'fenetrage_download' filename=output_path %}" class="btn btn-primary" id="download">
-                Download Results (.zip)
-            </a>
-        </div>
+
     </div>
     {% endif %}
 {% endblock %}
@@ -355,8 +350,16 @@
                 btn.disabled = false;
             }
         });
-        document.getElementById('download').addEventListener('click', function() {
-            this.enabled = false;
-        });
+        {% if zip_b64 %}
+        const zipData = "{{ zip_b64 }}";
+        if (zipData !== "") {
+            const link = document.createElement("a");
+            link.href = "data:application/zip;base64," + zipData;
+            link.download = "{{ zip_name|default:'Fenetrage_Output.zip' }}";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        {% endif %}
     </script>
 {% endblock %}

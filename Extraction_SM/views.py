@@ -50,7 +50,6 @@ def index(request):
         except Exception as e:
             return render(request, 'Extraction_SM/main.html', {'error_msg': f"Processing error: {e}"})
         finally:
-            # Always close the parser and wipe the entire temp folder from disk
             if parser:
                 parser.close()
             shutil.rmtree(request_temp, ignore_errors=True)
