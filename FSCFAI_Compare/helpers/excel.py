@@ -58,9 +58,10 @@ class ExcelHelper:
         one_jump=True
         for cell in cells:
             cur = self.extract_reference_from_cell(cell)
-            if jump_values and cur in jump_values and one_jump:
-                one_jump=False
-                continue
-            if cur is not None:
+            if cur is not None:#and cur in all fscf
+                if jump_values and cur in jump_values and one_jump:
+                    one_jump=False
+                    continue
+            
                 return cell
         return None
