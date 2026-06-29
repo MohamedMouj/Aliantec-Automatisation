@@ -54,9 +54,12 @@ class ExcelHelper:
 
     def find_first_valid_ref_from_left(self, row, jump_values=None):
         cells = reversed(row) if self.parse_right else row
+
+        one_jump=True
         for cell in cells:
             cur = self.extract_reference_from_cell(cell)
-            if jump_values and cur in jump_values:
+            if jump_values and cur in jump_values and one_jump:
+                one_jump=False
                 continue
             if cur is not None:
                 return cell
