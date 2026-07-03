@@ -19,7 +19,7 @@ class FsHelper:
                     for line in file_content:
                         if not (line.strip()) : continue
                         if line.startswith("*E"): break
-                        if line[0] in ['=', '+', '*', '-', '/', '@', '#', '%', '&', '^', '<', '>', '!', '?']: continue
+                        if line[0] in ['=', '*', '-', '/', '@', '#', '%', '&', '^', '<', '>', '!', '?']: continue
 
                         if line.strip().startswith('*') and data_list.get(f.name):
                             data_list[f.name][-1] += "\n"+line
