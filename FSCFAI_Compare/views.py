@@ -73,18 +73,11 @@ def index(request):
             with zipfile.ZipFile(zip_path, "r") as zf:
                 zf.extractall(extract_path)
  
-            # ---------------------------------------------------------------- #
-            #  3. Locate NEW / OLD folders                                      #
-            #                                                                    #
-            #  _find_folder raises ValueError with a user-friendly message if   #
-            #  either folder is missing — no more silent Path() / cwd fallback. #
-            # ---------------------------------------------------------------- #
-            extract_new_path = _find_folder(extract_path, "NEW")
-            extract_old_path = _find_folder(extract_path, "OLD")
+           
+            extract_new_path = _find_folder(extract_path, "NEW") or extract_path
+            extract_old_path = _find_folder(extract_path, "OLD") or extract_path
  
-            # ---------------------------------------------------------------- #
-            #  4. Run the comparison                                             #
-            # ---------------------------------------------------------------- #
+          
             output_dir = extract_path / "output"
             output_dir.mkdir(exist_ok=True)
  
@@ -103,19 +96,7 @@ def index(request):
                     "zip_data": "",
                 })
  
-            # ---------------------------------------------------------------- #
-            #  5. Build output ZIP                                              #
-            #                                                                    #
-            #  The ZIP is built into a BytesIO buffer so the temp directory     #
-            #  can be wiped in `finally` before the response leaves.            #
-            #  base64 encoding is preserved because the template uses it for    #
-            #  a client-side JS blob download — do not remove it.               #
-            #                                                                    #
-            #  Memory note: base64 adds ~33 % overhead on top of the raw ZIP.  #
-            #  For very large result sets consider switching the template to     #
-            #  a FileResponse endpoint, but that requires a template change     #
-            #  outside the scope of this fix.                                   #
-            # ---------------------------------------------------------------- #
+     
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
                 for root, _, files in os.walk(output_dir):
@@ -132,7 +113,6 @@ def index(request):
             })
  
         except ValueError as e:
-            # Missing NEW / OLD folder — user-facing message
             return render(request, "FSCFAI_Compare/main.html", {
                 "error":    str(e),
                 "zip_data": "",
