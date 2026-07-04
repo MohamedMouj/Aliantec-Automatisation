@@ -8,11 +8,13 @@ from ..helpers.xml_parser import xml_parser
 from ..helpers.ref_process import RefProcessor
 
 class Orchestrator:
-    def __init__(self, extract_dir, zip_path):
+    def __init__(self, extract_dir, zip_path, old_project, new_project):
    
         self.extract_dir = extract_dir
         self.zip_path = zip_path
         self.context = SharedData()
+        self.context.old_project = old_project
+        self.context.new_project = new_project
         
         # The TEMP_DIR is the parent of the extract_dir (the session folder)
         self.TEMP_DIR = os.path.abspath(str(Path(extract_dir).parent))

@@ -62,9 +62,7 @@ class xml_parser():
             old_val = elem.attrib['ref']
             if reference in old_val:
                 parts = old_val.split('\\')
-                if len(full_matched_filename.split('\\')) <= 1:
-                    new_final_path=full_matched_filename
-                elif len(parts) > 1:
+                if len(parts) > 1:
                     new_final_path = parts[0] + '\\' + full_matched_filename
                 else:
                     parent = elem.getparent()

@@ -9,3 +9,5 @@ class SharedData:
         self.references_by_xml = {}  # Map of XML filename to set of references
         self.all_xml_references = set() # Global set of all references in all XML files
         self.excel_refs_desc = {}        # Map of reference (str) to cell object
+        self.old_project = None
+        self.new_project = None

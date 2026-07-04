@@ -24,6 +24,8 @@ def get_safe_path(path_str):
 def projet_project(request):
     if request.method == 'POST' and request.FILES.get('zipped_fscfai'):
         zip_file = request.FILES['zipped_fscfai']
+        old_project_name = str(request.POST.get('old_project', '').strip())
+        new_project_name = str(request.POST.get('new_project', '').strip())
 
         session_id = uuid.uuid4().hex[:8]
 
@@ -45,10 +47,9 @@ def projet_project(request):
         extracted_folder = get_safe_path(os.path.join(safe_session_dir, 'e'))
         os.makedirs(extracted_folder, exist_ok=True)
 
-        parse_right = request.POST.get('parse_right') == 'on'
 
         try:
-            orchestrator = Orchestrator(extracted_folder, str(zip_path))
+            orchestrator = Orchestrator(extracted_folder, str(zip_path), old_project_name, new_project_name)
             results, error = orchestrator.process_all()
 
             if error:

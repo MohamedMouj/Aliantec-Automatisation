@@ -59,6 +59,47 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 20px var(--primary-glow);
         }
+
+        .input-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+            padding: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .input-card:hover {
+            transform: translateY(-1px);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .input-card .card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .input-card input[type="text"] {
+            width: 100%;
+            padding: 1rem 1rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .input-card input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(15, 95, 189, 0.1);
+        }
     </style>
 {% endblock %}
 
@@ -79,25 +120,37 @@
             {% csrf_token %}
             <input type="hidden" name="fscfai_json" id="fscfai_json_input">
             
-            <div class="form-grid" style="display: flex; justify-content: center;">
-                <div class="field-group" style="width: 50%;">
+            <div class="form-grid">
+                <div class="field-group">
                     <label>FSCFAI (ZIP)</label>
-                    <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
-                        <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📦</div>
-                        <div class="text" style="font-weight: 600; color: var(--text-main);">Select Source ZIP</div>
-                        <small id="zip_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">FSCFAI File Collection (.zip)</small>
-                        <input type="file" name="zipped_fscfai" id="zipped_fscfai" accept=".zip" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
+                    <div class="file-input-wrapper">
+                        <div class="icon">📦</div>
+                        <div class="text">Select Source ZIP</div>
+                        <small id="zip_file_name" class="hint">FSCFAI File Collection (.zip)</small>
+                        <input type="file" name="zipped_fscfai" id="zipped_fscfai" accept=".zip" required>
                     </div>
                 </div>
             </div>
-            
-            <div class="field-group" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 0.75rem; background: var(--background); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
-                <input type="checkbox" name="parse_right" id="parse_right" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
-                <label for="parse_right" style="margin-bottom: 0; cursor: pointer; font-weight: 600; color: var(--text-main); font-size: 0.9rem;">
-                    Case: NEW REF are on the right of OLD REF
-                </label>
+
+            <div class="form-grid" style="margin-top: 1.5rem;">
+                <div class="field-group input-card">
+                    <div class="card-title">
+                        <span class="icon">📁</span>
+                        <span>Old project code</span>
+                    </div>
+                    <small class="hint">Project code to replace in XML paths (e.g. DAG).</small>
+                    <input type="text" name="old_project" id="old_project" placeholder="Enter old project code" required>
+                </div>
+                <div class="field-group input-card">
+                    <div class="card-title">
+                        <span class="icon">🆕</span>
+                        <span>New project code</span>
+                    </div>
+                    <small class="hint">Project code to use for replacement in XML paths.</small>
+                    <input type="text" name="new_project" id="new_project" placeholder="Enter new project code" required>
+                </div>
             </div>
-            
+
             <button type="submit" class="btn-standard" id="btn-lancer_traitement" style="margin-top: 1.5rem;">
                 <span>Start Processing & Synchronization</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>

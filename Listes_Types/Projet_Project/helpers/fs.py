@@ -61,7 +61,7 @@ class file_system_manipulation():
                         ref = match.group(1)
                         if ref not in fscfai_files:
                             # parent=Path(basename).parent
-                            fscfai_files[ref] = os.path.join(os.path.dirname(basename), basename)
+                            fscfai_files[os.path.join(os.path.dirname(basename), basename)] = ref
                     target_path = os.path.join(extract_dir, basename)
                     with z.open(member) as src, open(target_path, 'wb') as dst:
                         dst.write(src.read())
@@ -72,8 +72,9 @@ class file_system_manipulation():
         if not reference:
             return False, None
             
-        if reference in self.context.fscfai_files:
-            return True, self.context.fscfai_files[reference]
+        for filename, ref in self.context.fscfai_files.items():
+            if ref == reference:
+                return True, filename
             
         return False, None
 

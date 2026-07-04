@@ -5,7 +5,7 @@ from rapidfuzz import process, fuzz
 
 
 # Threshold constants
-SCORE_MIN          = 70   # minimum acceptable fuzzy score
+SCORE_MIN          = 50   # minimum acceptable fuzzy score
 SCORE_HIGH         = 80   # score above which a single top match is trusted
 SCORE_CLOSE_TOL    = 5    # absolute tolerance for "too-close" top-two scores
 CONTENT_MATCH_MIN  = 70   # minimum content-similarity score to accept a result
@@ -18,24 +18,16 @@ class RefProcessor:
         self.xml_obj   = xml_obj
         self.fs_obj    = fs_obj
         self.xml_path  = xml_obj.xml_file_name
+        self.old_project=self.fs_obj.context.old_project
+        self.new_project=self.fs_obj.context.new_project
         # populated in run(); declared here for clarity
         self.cleaned_list: dict[str, str] = {}  # description → full filename
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def _build_cleaned_list(self, existing_refs: list[str]) -> dict[str, str]:
-        """
-        Return {description: filename} for every FSCFAI file that:
-          - is not already referenced in the XML, and
-          - does not contain 'F2X' in its name.
-        Assumes filenames are at least 15 characters long (strips a fixed prefix).
-        """
         return {
-            "".join(filename.split("_")[-3:]): filename
-            for ref, filename in self.fs_obj.context.fscfai_files.items()
-            if ref not in existing_refs and "F2X" not in filename.upper()
+            filename: filename
+            for filename, ref in self.fs_obj.context.fscfai_files.items()
+            if ref not in existing_refs and self.old_project not in filename.upper()
         }
 
     def get_fn(self, desc: str) -> str | None:
@@ -68,12 +60,6 @@ class RefProcessor:
         self,
         *fns
     ) -> tuple[str, float]:
-        """
-        When the top fuzzy matches are too close in score, fall back to
-        comparing file *content* similarity.
-
-        Returns (best_filename, score_float).
-        """
         f = (
             self.fs_obj.compare_fscf_content(
                 list(fns)
@@ -108,21 +94,16 @@ class RefProcessor:
 
         return (best_filename, float(best_score))
 
-    def _resolve_f2x(self, old_xml_path: str, row: dict) -> str | None:
-        """
-        Run fuzzy matching for an F2X reference.
-        Mutates *row* in-place with score / new_reference fields.
-        Returns the detected new reference description, or None.
-        """
+    def _resolve(self, old_xml_path: str, row: dict) -> str | None:
         candidates = list(self.cleaned_list.keys())
-        cs="".join(old_xml_path.split("_")[-3:]).replace("F2X", "F2U")
+        cs="".join(old_xml_path.split("_")[-3:]).replace(self.old_project, self.new_project)
         extracted = process.extract(
             cs,
             candidates,
             scorer=fuzz.ratio,
             limit=TOP_CANDIDATES,
         )
-        extracted=[i for i in extracted if i[0][:3] == cs[:3]]
+        # extracted=[i for i in extracted if i[0][:3] == cs[:3]]
         if not extracted:
             row["status"] = "NO_MATCH"
             row["reason"] = "No candidates returned by search."
@@ -146,12 +127,10 @@ class RefProcessor:
         #     row["new_reference_found"]    = new_ref
 
         else: 
-            new_ref: str | None = None
-            # Too many close candidates — use content comparison to break the tie
+            
             filenames = [self.cleaned_list.get(e[0], e[0]) for e in extracted]
-            result = self.compare_content(old_xml_path, *filenames)
+            result = self.compare_content(old_xml_path.split("\\")[-1], *filenames)
 
-            # BUG FIX: compare_content now always returns a tuple; guard against (None, 0.0)
             best_fn, best_score = result if result is not None else (None, 0.0)
 
             if best_fn is not None and best_score > SCORE_HIGH:
@@ -174,7 +153,7 @@ class RefProcessor:
     def run(self) -> tuple[list[dict], dict, str]:
         current_references_data = self.xml_obj.get_references()
         total_refs   = len(current_references_data)
-        existing_refs = [item["ref"] for item in current_references_data]
+        existing_refs = [item["old_val"] for item in current_references_data]
 
         self.cleaned_list = self._build_cleaned_list(existing_refs)
 
@@ -188,13 +167,11 @@ class RefProcessor:
 
             row = self._make_row(old_xml_path, current_ref)
 
-            # ── Non-F2X references: pass through unchanged ──────────────
-            if "F2X" not in old_xml_path.upper():
+            if self.old_project not in old_xml_path.upper():
                 grid_data.append(row)
                 continue
 
-            # ── F2X: attempt to resolve a replacement ───────────────────
-            new_ref_detected = self._resolve_f2x(old_xml_path, row)
+            new_ref_detected = self._resolve(old_xml_path, row)
 
             if row["status"] == "NO_MATCH":
                 grid_data.append(row)
@@ -210,7 +187,7 @@ class RefProcessor:
 
             # ── Folder search ────────────────────────────────────────────
             found, matched_filename = self.fs_obj.search_in_folder_for_file_contains_reference(chosen_ref)
-
+            matched_filename=new_ref_detected
             if found:
                 row["file_found_in_folder"] = "Yes"
                 match_count += 1
