@@ -8,6 +8,7 @@ from pathlib import Path
 from django_tables2 import RequestConfig
 from .service.orchestrator import Orchestrator
 from ..tables import UpdateTable, DeletionTable, AdditionTable
+from analytics.decorators import log_execution
 
 
 def get_safe_path(path_str):
@@ -21,6 +22,7 @@ def get_safe_path(path_str):
     return abs_path
 
 
+@log_execution('Listes Types', action='Project Project Update', project_name=lambda request: '', filename=lambda request: request.FILES.get('zipped_fscfai').name if request.FILES.get('zipped_fscfai') else '')
 def projet_project(request):
     if request.method == 'POST' and request.FILES.get('zipped_fscfai'):
         zip_file = request.FILES['zipped_fscfai']

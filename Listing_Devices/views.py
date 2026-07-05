@@ -7,7 +7,9 @@ from pathlib import Path
 from django.shortcuts import render
 from django.http import FileResponse
 from .helpers.process import DevicesProcess
+from analytics.decorators import log_execution
 
+@log_execution('Listing Devices', action='Device Listing', project_name=lambda request: '', filename=lambda request: request.FILES.get('input_zip').name if request.FILES.get('input_zip') else '')
 def index(request):
     results = None
     if request.method == 'POST' and request.FILES.get('input_zip'):

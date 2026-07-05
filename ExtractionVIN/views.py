@@ -5,8 +5,10 @@ from pathlib import Path
 from django.shortcuts import render
 from django.http import FileResponse
 from .helpers.excel import ExcelParser
+from analytics.decorators import log_execution
 
 
+@log_execution('Extraction VIN', action='Excel Extraction', project_name=lambda request: '', filename=lambda request: request.FILES.get('input_excel').name if request.FILES.get('input_excel') else '')
 def index(request):
     if request.method == 'POST' and request.FILES.get('input_excel'):
         uploaded_excel = request.FILES['input_excel']

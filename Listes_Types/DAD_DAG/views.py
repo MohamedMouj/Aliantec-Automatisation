@@ -37,6 +37,7 @@ from django_tables2 import RequestConfig
 from .services.orchestrator import Orchestrator
 from .helpers.audit_manifest import AuditManifest, NEEDS_REVIEW
 from ..tables import UpdateTable, DeletionTable, AdditionTable
+from analytics.decorators import log_execution
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -98,6 +99,7 @@ TEMPLATE = "Listes_Types/DAD_DAG/index.html"
 REVIEW_TEMPLATE = "Listes_Types/DAD_DAG/audit_review.html"
 
 
+@log_execution('Listes Types', action='DAD DAG Update', project_name=lambda request: '', filename=lambda request: ' + '.join([f.name for f in [request.FILES.get('pta_file'), request.FILES.get('zipped_fscfai')] if f]))
 def index(request):
     """
     Handles the initial file upload form (GET) and the first processing

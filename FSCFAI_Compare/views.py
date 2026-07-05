@@ -10,6 +10,7 @@ from django.shortcuts import render
 from django.http import FileResponse
  
 from .helpers.process import CompareProcess
+from analytics.decorators import log_execution
  
  
 # --------------------------------------------------------------------------- #
@@ -22,11 +23,7 @@ def _find_folder(root: Path, keyword: str) -> Path:
         if p.is_dir() and keyword.upper() in p.name.upper()
     ]
     if not candidates:
-        raise ValueError(
-            f"No directory containing '{keyword}' found inside the ZIP. "
-            f"Make sure the archive contains a folder with '{keyword}' in its name."
-        )
-    # min by path depth → shallowest = top-most match
+        return None
     return min(candidates, key=lambda p: len(p.parts))
  
  
@@ -34,6 +31,7 @@ def _find_folder(root: Path, keyword: str) -> Path:
 #  View                                                                         #
 # --------------------------------------------------------------------------- #
  
+@log_execution('FSCFAI Compare', action='Reference Comparison', project_name=lambda request: '', filename=lambda request: ' + '.join([f.name for f in [request.FILES.get('input_zip'), request.FILES.get('input_excel')] if f]))
 def index(request):
     if (
         request.method == "POST"

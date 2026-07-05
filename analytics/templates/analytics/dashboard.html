@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Admin Analytics Dashboard{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/base.css' %}" rel="stylesheet">
+<style>
+    .analytics-shell { display: grid; gap: 1.25rem; }
+    .analytics-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.9rem; background: var(--surface); padding: 1rem; border-radius: 16px; box-shadow: var(--shadow-sm); align-items: end; }
+    .analytics-filters label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted, inherit); }
+    .analytics-filters input, .analytics-filters select { width: 100%; box-sizing: border-box; }
+    .analytics-card { background: var(--surface); border-radius: 16px; padding: 1rem; box-shadow: var(--shadow-sm); }
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+    .metric-card { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border-radius: 16px; padding: 1rem; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.7rem; border-bottom: 1px solid var(--border); text-align: left; }
+    .btn-inline { display: inline-block; padding: 0.55rem 0.9rem; border-radius: 999px; background: var(--primary); color: white; text-decoration: none; }
+    @media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-shell">
+    <header class="page-header">
+        <h1>Admin Analytics Dashboard</h1>
+        <p>Track automation runs, inspect failures, and monitor current activity.</p>
+    </header>
+    <div class="metric-grid">
+        <div class="metric-card">
+            <h3>Total Executions</h3>
+            <p style="font-size: 1.7rem; margin: 0.3rem 0 0;">{{ total_executions }}</p>
+        </div>
+        <div class="metric-card">
+            <h3>Running</h3>
+            <p style="font-size: 1.7rem; margin: 0.3rem 0 0;">{{ running }}</p>
+        </div>
+        <div class="metric-card">
+            <h3>Success</h3>
+            <p style="font-size: 1.7rem; margin: 0.3rem 0 0;">{{ success }}</p>
+        </div>
+        <div class="metric-card">
+            <h3>Failed</h3>
+            <p style="font-size: 1.7rem; margin: 0.3rem 0 0;">{{ failed }}</p>
+        </div>
+        <div class="metric-card">
+            <h3>Average Processing Time</h3>
+            <p style="font-size: 1.7rem; margin: 0.3rem 0 0;">{% if average_time_seconds is not None %}{{ average_time_seconds }}s{% else %}—{% endif %}</p>
+        </div>
+    </div>
+
+    <form method="get" class="analytics-filters">
+        <div>
+            <label>Date From</label>
+            <input type="date" name="date_from" value="{{ selected.date_from }}">
+        </div>
+        <div>
+            <label>Date To</label>
+            <input type="date" name="date_to" value="{{ selected.date_to }}">
+        </div>
+        <div>
+            <label>User</label>
+            <select name="user">
+                <option value="">All users</option>
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if selected.user == user.id|stringformat:'s' %}selected{% endif %}>{{ user.get_full_name|default:user.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Application</label>
+            <select name="application">
+                <option value="">All applications</option>
+                {% for app in applications %}
+                <option value="{{ app }}" {% if selected.application == app %}selected{% endif %}>{{ app }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Status</label>
+            <select name="status">
+                <option value="">All statuses</option>
+                <option value="RUNNING" {% if selected.status == 'RUNNING' %}selected{% endif %}>Running</option>
+                <option value="SUCCESS" {% if selected.status == 'SUCCESS' %}selected{% endif %}>Success</option>
+                <option value="FAILED" {% if selected.status == 'FAILED' %}selected{% endif %}>Failed</option>
+                <option value="CANCELLED" {% if selected.status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+            </select>
+        </div>
+        <div>
+            <label>Filename</label>
+            <input type="text" name="filename" value="{{ selected.filename }}" placeholder="Search filename">
+        </div>
+        <div style="display:flex; align-items:end; gap:0.5rem;">
+            <button type="submit" class="btn-inline">Apply Filters</button>
+            <a href="{% url 'analytics_dashboard' %}" class="btn-inline" style="background: var(--text-muted);">Reset</a>
+        </div>
+    </form>
+
+    <div class="summary-grid">
+        <div class="analytics-card">
+            <h3>Executions by Application</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Application</th><th>Count</th></tr></thead>
+                    <tbody>
+                        {% for item in by_application %}
+                        <tr><td>{{ item.application }}</td><td>{{ item.count }}</td></tr>
+                        {% empty %}
+                        <tr><td colspan="2">No data</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="analytics-card">
+            <h3>Executions by User</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>User</th><th>Count</th></tr></thead>
+                    <tbody>
+                        {% for item in by_user %}
+                        <tr><td>{{ item.user__first_name|default:'' }} {{ item.user__last_name|default:'' }}{% if not item.user__first_name and not item.user__last_name %}{{ item.user__username }}{% endif %}</td><td>{{ item.count }}</td></tr>
+                        {% empty %}
+                        <tr><td colspan="2">No data</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="analytics-card">
+        <h3>Recent Executions</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Application</th>
+                        <th>Action</th>
+                        <th>Filename</th>
+                        <th>Start Time</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in logs %}
+                    <tr>
+                        <td>{{ entry.user.get_full_name|default:entry.user.username|default:'System' }}</td>
+                        <td>{{ entry.application }}</td>
+                        <td>{{ entry.action }}</td>
+                        <td>{{ entry.filename|default:'—' }}</td>
+                        <td>{{ entry.started_at|date:'Y-m-d H:i' }}</td>
+                        <td>{{ entry.duration_display }}</td>
+                        <td>{{ entry.status }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8">No executions found for the selected filters.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

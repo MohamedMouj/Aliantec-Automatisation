@@ -31,7 +31,7 @@
             <nav class="nav-links">
                 {% if user.is_authenticated %}
                     <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Applications</a>
-                    {% if user.is_superuser %}<a  class="nav-link">Apps Statics</a><a href="/admin" class="nav-link">Users Management</a>{% endif %}
+                    {% if user.is_superuser %}<a href="{% url 'analytics_dashboard' %}" class="nav-link {% if '/analytics/' in request.path %}active{% endif %}">Statistics</a><a href="/admin" class="nav-link">Users Management</a>{% endif %}
                     <p class="nav-link">Logged in as: <span style="font-weight: bold; color: #007bff;">{{ user.first_name }} {{ user.last_name }}</span></p>
                     <a href="{% url 'logout' %}" class="nav-link" style="color: #dc3545;">Logout</a>
                 {% endif %}

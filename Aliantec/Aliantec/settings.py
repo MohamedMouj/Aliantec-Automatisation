@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-ht*twa-(6m!!20vqrbh53-)4c^z-plk^u7&y_pbk09mw45ivo#
 DEBUG = True
 
 # Add your server's IP or domain here
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
 
 # Application definition
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_tables2',
     'Main',
+    'analytics',
     'Listes_Types',
     'FSCFAI_Compare',
     'Listing_Devices',

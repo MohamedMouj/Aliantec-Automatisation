@@ -9,5 +9,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
     path('logout/', main_views.logout_view, name='logout'),
+    path('analytics/', include('analytics.urls')),
     path('', include('Main.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

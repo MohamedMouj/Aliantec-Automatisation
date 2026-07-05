@@ -10,6 +10,7 @@ from pathlib import Path
 from ..tables import UpdateTable, AdditionTable, DeletionTable
 from django_tables2 import RequestConfig
 from .services.orchestrator import Orchestrator
+from analytics.decorators import log_execution
 
 
 def get_safe_path(path_str):
@@ -19,6 +20,7 @@ def get_safe_path(path_str):
     return abs_path
 
 
+@log_execution('Listes Types', action='Fenetrage Update', project_name=lambda request: '', filename=lambda request: ' + '.join([f.name for f in [request.FILES.get('pta_file'), request.FILES.get('zipped_fscfai')] if f]))
 def fenetrage(request):
     if request.method == 'POST' and request.FILES.get('pta_file') and request.FILES.get('zipped_fscfai'):
         pta_file = request.FILES['pta_file']
