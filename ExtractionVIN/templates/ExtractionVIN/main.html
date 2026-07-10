@@ -295,14 +295,12 @@
         <p>Upload an Excel file to extract and map VIN codes</p>
     </header>
 
-    {% if error_msg %}
-    <div class="error-alert">
+    <div id="error-alert" class="error-alert" style="display: none;">
         <div>
             <strong>Error</strong>
-            <p style="margin-top: 0.25rem;">{{ error_msg }}</p>
+            <p id="error-message" style="margin-top: 0.25rem;"></p>
         </div>
     </div>
-    {% endif %}
 
     <div class="upload-card">
         <form id="upload-form" method="post" enctype="multipart/form-data">
@@ -329,107 +327,195 @@
         <p style="color: rgba(255,255,255,0.7);">Reading sheets and mapping VIN codes.</p>
     </div>
 
-    {% if results %}
-    <section class="results-container">
-        <div class="results-header">
-            <h2 style="font-weight: 700;">Extraction Results</h2>
-            {% if download_name %}
-            <a href="{% url 'extraction_vin_download' %}" class="btn-download">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download {{ download_name }}
-            </a>
-            {% endif %}
-        </div>
+    <div id="results-container"></div>
 
-        {% with ok_count=0 warn_count=0 %}
-        <div class="summary-bar">
-            <div class="summary-stat">
-                <div class="number">{{ results|length }}</div>
-                <div class="label">Total Processed</div>
+    <template id="results-template">
+        <section class="results-container">
+            <div class="results-header">
+                <h2 style="font-weight: 700;">Extraction Results</h2>
+                <button type="button" class="btn-download" data-role="download-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span data-role="download-label">Download</span>
+                </button>
             </div>
-            <div class="summary-stat success">
-                <div class="number" id="ok-count">—</div>
-                <div class="label">Matched</div>
-            </div>
-            <div class="summary-stat warning">
-                <div class="number" id="warn-count">—</div>
-                <div class="label">Warnings</div>
-            </div>
-        </div>
-        {% endwith %}
 
-        <table class="results-table">
-            <thead>
-                <tr>
-                    <th>Row</th>
-                    <th>Label</th>
-                    <th>VIN</th>
-                    <th>Status</th>
-                    <th>Message</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for r in results %}
-                <tr>
-                    <td>{{ r.row }}</td>
-                    <td><strong>{{ r.label }}</strong></td>
-                    <td>{{ r.vin|default:"—" }}</td>
-                    <td>
-                        <span class="status-badge {% if r.status == 'ok' %}status-ok{% else %}status-warn{% endif %}">
-                            {{ r.status }}
-                        </span>
-                    </td>
-                    <td>{{ r.message }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
-    {% elif results is not None %}
-    <section class="results-container" style="text-align: center; padding: 4rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); margin-top: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
-        <h3 style="font-weight: 700; color: var(--text-main);">No labels found</h3>
-        <p style="color: var(--text-muted);">The "Validation Web" sheet did not contain any recognizable labels in column D.</p>
-    </section>
-    {% endif %}
+            <div class="summary-bar">
+                <div class="summary-stat">
+                    <div class="number" data-role="total-count">0</div>
+                    <div class="label">Total Processed</div>
+                </div>
+                <div class="summary-stat success">
+                    <div class="number" data-role="ok-count">0</div>
+                    <div class="label">Matched</div>
+                </div>
+                <div class="summary-stat warning">
+                    <div class="number" data-role="warn-count">0</div>
+                    <div class="label">Warnings</div>
+                </div>
+            </div>
+
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Row</th>
+                        <th>Label</th>
+                        <th>VIN</th>
+                        <th>Status</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody data-role="results-body"></tbody>
+            </table>
+        </section>
+    </template>
+
+    <template id="no-results-template">
+        <section class="results-container" style="text-align: center; padding: 4rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); margin-top: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+            <h3 style="font-weight: 700; color: var(--text-main);">No labels found</h3>
+            <p style="color: var(--text-muted);">The "Validation Web" sheet did not contain any recognizable labels in column D.</p>
+        </section>
+    </template>
 
     <script>
         const processingOverlay = document.getElementById('processing-overlay');
-        let overlayTimeout = null;
+        const uploadForm = document.getElementById('upload-form');
+        const errorAlert = document.getElementById('error-alert');
+        const errorMessage = document.getElementById('error-message');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsTemplate = document.getElementById('results-template');
+        const noResultsTemplate = document.getElementById('no-results-template');
 
         function showProcessingOverlay() {
             processingOverlay.style.display = 'flex';
-            if (overlayTimeout) {
-                clearTimeout(overlayTimeout);
-            }
-            overlayTimeout = setTimeout(hideProcessingOverlay, 25000);
         }
 
         function hideProcessingOverlay() {
-            if (processingOverlay) {
-                processingOverlay.style.display = 'none';
-            }
-            if (overlayTimeout) {
-                clearTimeout(overlayTimeout);
-                overlayTimeout = null;
-            }
+            processingOverlay.style.display = 'none';
         }
 
-        // Show overlay on submit
-        const uploadForm = document.getElementById('upload-form');
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorAlert.style.display = 'flex';
+        }
+
+        function clearError() {
+            errorAlert.style.display = 'none';
+            errorMessage.textContent = '';
+        }
+
+        // Decode a base64 payload into a Blob and trigger a normal browser download for it.
+        function downloadBase64File(base64Data, filename, contentType) {
+            const byteChars = atob(base64Data);
+            const byteNumbers = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+                byteNumbers[i] = byteChars.charCodeAt(i);
+            }
+            const blob = new Blob([new Uint8Array(byteNumbers)], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        // Build the results table from JSON. Uses textContent (never innerHTML)
+        // for anything derived from the uploaded workbook, since cell values are
+        // untrusted user input.
+        function renderResults(results, downloadName, fileData, contentType) {
+            resultsContainer.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                resultsContainer.appendChild(noResultsTemplate.content.cloneNode(true));
+                return;
+            }
+
+            const fragment = resultsTemplate.content.cloneNode(true);
+
+            const downloadBtn = fragment.querySelector('[data-role="download-btn"]');
+            fragment.querySelector('[data-role="download-label"]').textContent = 'Download ' + downloadName;
+            downloadBtn.addEventListener('click', function () {
+                downloadBase64File(fileData, downloadName, contentType);
+            });
+
+            let okCount = 0;
+            let warnCount = 0;
+            const tbody = fragment.querySelector('[data-role="results-body"]');
+
+            results.forEach(function (r) {
+                if (r.status === 'ok') { okCount++; } else { warnCount++; }
+
+                const tr = document.createElement('tr');
+
+                const rowCell = document.createElement('td');
+                rowCell.textContent = r.row;
+
+                const labelCell = document.createElement('td');
+                const strong = document.createElement('strong');
+                strong.textContent = r.label;
+                labelCell.appendChild(strong);
+
+                const vinCell = document.createElement('td');
+                vinCell.textContent = r.vin || '—';
+
+                const statusCell = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.className = 'status-badge ' + (r.status === 'ok' ? 'status-ok' : 'status-warn');
+                badge.textContent = r.status;
+                statusCell.appendChild(badge);
+
+                const messageCell = document.createElement('td');
+                messageCell.textContent = r.message;
+
+                tr.append(rowCell, labelCell, vinCell, statusCell, messageCell);
+                tbody.appendChild(tr);
+            });
+
+            fragment.querySelector('[data-role="total-count"]').textContent = results.length;
+            fragment.querySelector('[data-role="ok-count"]').textContent = okCount;
+            fragment.querySelector('[data-role="warn-count"]').textContent = warnCount;
+
+            resultsContainer.appendChild(fragment);
+        }
+
         if (uploadForm) {
-            uploadForm.addEventListener('submit', function() {
+            uploadForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                clearError();
+                resultsContainer.innerHTML = '';
                 showProcessingOverlay();
+
+                const formData = new FormData(uploadForm);
+
+                fetch(uploadForm.action || window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                    .then(function (response) {
+                        return response.json().then(function (data) {
+                            return { data: data };
+                        });
+                    })
+                    .then(function (result) {
+                        hideProcessingOverlay();
+                        const data = result.data;
+                        if (!data || !data.success) {
+                            showError((data && data.error_msg) || 'An unexpected error occurred.');
+                            return;
+                        }
+                        downloadBase64File(data.file_data, data.download_name, data.content_type);
+                        renderResults(data.results, data.download_name, data.file_data, data.content_type);
+                    })
+                    .catch(function (err) {
+                        hideProcessingOverlay();
+                        showError('Network error: ' + err.message);
+                    });
             });
         }
-
-        // Hide overlay when browser regains focus or page becomes visible
-        window.addEventListener('focus', hideProcessingOverlay);
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'visible') {
-                hideProcessingOverlay();
-            }
-        });
 
         // Add file name display
         document.querySelectorAll('input[type="file"]').forEach(input => {
@@ -443,19 +529,5 @@
                 }
             });
         });
-
-        // Calculate summary counts from the rendered table
-        (function() {
-            const badges = document.querySelectorAll('.status-badge');
-            let ok = 0, warn = 0;
-            badges.forEach(b => {
-                if (b.textContent.trim() === 'ok') ok++;
-                else warn++;
-            });
-            const okEl = document.getElementById('ok-count');
-            const warnEl = document.getElementById('warn-count');
-            if (okEl) okEl.textContent = ok;
-            if (warnEl) warnEl.textContent = warn;
-        })();
     </script>
 {% endblock %}
