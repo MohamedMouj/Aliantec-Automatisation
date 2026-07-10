@@ -335,3 +335,8 @@ footer {
 .text-center { text-align: center; }
 .hidden { display: none; }
 
+@media(max-width: 1000px) {
+        .nav-links {
+            display: none;
+        }}
+
