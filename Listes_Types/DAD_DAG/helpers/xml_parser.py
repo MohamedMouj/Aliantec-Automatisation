@@ -14,8 +14,13 @@ class xml_parser():
       
     def load_tree(self):
         if self.tree is None:
-            # For etree, we need to handle the long path prefix carefully
-            file_to_parse = self.xml_file_name
+            file_to_parse = os.fspath(self.xml_file_name)
+            if os.name == 'nt' and file_to_parse.startswith('\\\\?\\'):
+                file_to_parse = file_to_parse[4:]
+
+            if not os.path.exists(file_to_parse):
+                raise FileNotFoundError(f'The XML file was not found: {file_to_parse}')
+
             self.tree = etree.parse(file_to_parse)
             self.root = self.tree.getroot()
             
@@ -109,10 +114,12 @@ class xml_parser():
     def is_ref_exist(self, ref):
         if not ref:
             return False
-        xml_basename = os.path.basename(self.xml_file_name)
-        if xml_basename in self.context.references_by_xml:
-            if ref in self.context.references_by_xml[xml_basename]:
-                return True
+        # Use the context cache when available (faster, avoids re-parsing)
+        if self.context is not None:
+            xml_basename = os.path.basename(self.xml_file_name)
+            if xml_basename in self.context.references_by_xml:
+                return ref in self.context.references_by_xml[xml_basename]
+        # Fallback: scan the parsed tree directly (used when context=None in finalize)
         self.load_tree()
         for elem in self.root.iter():
             for value in elem.attrib.values():

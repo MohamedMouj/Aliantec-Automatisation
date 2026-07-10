@@ -2,11 +2,53 @@
 {% load static %}
 {% load render_table from django_tables2 %}
 
-{% block title %}Aliantec Toolkit | DAD_DAG Processing{% endblock %}
+{% block title %}Aliantec Toolkit | Listes-Types Update{% endblock %}
 
 {% block extra_css %}
     <link href="{% static 'css/listes-types.css' %}" rel="stylesheet">
     <style>
+        /* Audit Table Styles */
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            border-radius: var(--radius-md, 6px);
+            overflow: hidden;
+            font-family: inherit;
+            border: 1px solid var(--border);
+        }
+        .audit-table thead {
+            background-color: var(--surface-hover);
+        }
+        .audit-table th {
+            padding: 1.25rem 1.5rem;
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--secondary);
+            border-bottom: 2px solid var(--border);
+        }
+        .audit-table tbody tr {
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--border);
+            transition: background-color 0.2s;
+        }
+        .audit-table tbody tr:nth-of-type(even) {
+            background-color: var(--background);
+        }
+        .audit-table tbody tr:hover {
+            background-color: var(--primary-light);
+        }
+        .audit-table td {
+            padding: 1.25rem 1.5rem;
+            vertical-align: middle;
+            font-family: inherit;
+            line-height: 1.5;
+            color: var(--text-main);
+        }
+        
         /* Processing Overlay Styles */
         #processing-overlay {
             display: none;
@@ -64,9 +106,11 @@
 
 {% block content %}
     <header class="page-header">
-        <h1>DAD_DAG List-Type Update</h1>
-        <p>Automated synchronization of DAD_DAG documents with PTA data.</p>
+        <h1>Listes-Types Update</h1>
+        <p>Automated synchronization of Listes-Types documents with PTA data.</p>
     </header>
+
+
 
     {% if error %}
     <div class="alert alert-error">
@@ -77,35 +121,17 @@
     <div class="card form-card">
         <form method="post" enctype="multipart/form-data" id="uploadForm">
             {% csrf_token %}
-            <input type="hidden" name="fscfai_json" id="fscfai_json_input">
             
             <div class="form-grid">
-                <div class="field-group">
-                    <label>PTA(Excel)</label>
-                    <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
-                        <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📊</div>
-                        <div class="text" style="font-weight: 600; color: var(--text-main);">Select PTA File</div>
-                        <small id="pta_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">PTA Mapping Data (.xlsx, .xls, .xlsm)</small>
-                        <input type="file" name="pta_file" id="pta_file" accept=".xlsx, .xls, .xlsm" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
-                    </div>
-                </div>
                 <div class="field-group">
                     <label>FSCFAI (ZIP)</label>
                     <div class="file-input-wrapper" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; transition: var(--transition); background: var(--background);">
                         <div class="icon" style="font-size: 1.5rem; margin-bottom: 0.5rem;">📦</div>
                         <div class="text" style="font-weight: 600; color: var(--text-main);">Select Source ZIP</div>
                         <small id="zip_file_name" class="hint" style="display: block; color: var(--text-muted); font-size: 0.75rem;">FSCFAI File Collection (.zip)</small>
-                        <input type="file" id="zipped_fscfai_input" accept=".zip" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
-                        <input type="file" name="zipped_fscfai" id="zipped_fscfai_actual" style="display:none;">
+                        <input type="file" name="zipped_fscfai" id="zipped_fscfai" accept=".zip" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
                     </div>
                 </div>
-            </div>
-            
-            <div class="field-group" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 0.75rem; background: var(--background); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
-                <input type="checkbox" name="parse_right" id="parse_right" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
-                <label for="parse_right" style="margin-bottom: 0; cursor: pointer; font-weight: 600; color: var(--text-main); font-size: 0.9rem;">
-                    Case: NEW REF are on the right of OLD REF
-                </label>
             </div>
             
             <button type="submit" class="btn-standard" id="btn-lancer_traitement" style="margin-top: 1.5rem;">
@@ -132,62 +158,122 @@
 
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-label">Total Analyzed</div>
+                <div class="stat-label">Total Updated</div>
                 <div class="stat-value">{{ summary.total }}</div>
             </div>
+            {% if total_auto %}
             <div class="stat-card">
-                <div class="stat-label">Matches</div>
-                <div class="stat-value">{{ summary.matches }}</div>
+                <div class="stat-label">Auto-Updated</div>
+                <div class="stat-value" style="color: var(--primary);">{{ total_auto }}</div>
             </div>
+            {% endif %}
+            {% if total_finalized %}
             <div class="stat-card">
-                <div class="stat-label">Updates</div>
-                <div class="stat-value">{{ summary.updates }}</div>
+                <div class="stat-label">User-Reviewed</div>
+                <div class="stat-value" style="color: var(--success);">{{ total_finalized }}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">To Delete</div>
-                <div class="stat-value" style="color: var(--error);">{{ summary.deletes }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">To Add</div>
-                <div class="stat-value" style="color: var(--success);">{{ summary.new_in_excel }}</div>
-            </div>
+            {% endif %}
         </div>
 
-        <div class="tab-container mt-8">
-            <div class="tab-nav">
-                <div class="tab-link active" onclick="openTab(event, 'tab1')">Updates</div>
-                <div class="tab-link" onclick="openTab(event, 'tab2')">To Add</div>
-                <div class="tab-link" onclick="openTab(event, 'tab3')">To Delete</div>
-            </div>
-
-            <div class="search-bar">
-                <input type="text" id="searchInput" class="search-input" onkeyup="filterTable()" placeholder="Search in results...">
-            </div>
-
-            <div id="tab1" class="tab-pane active">
-                <div class="table-wrapper">
-                    <div class="table-scroll">
-                        {% render_table table_updates %}
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab2" class="tab-pane">
-                <div class="table-wrapper">
-                    <div class="table-scroll">
-                        {% render_table table_additions %}
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab3" class="tab-pane">
-                <div class="table-wrapper">
-                    <div class="table-scroll">
-                        {% render_table table_deletions %}
-                    </div>
-                </div>
+        {% if auto_updates %}
+        <div style="margin-top: 2rem; background: var(--background); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border);">
+            <h3 style="margin-top: 0; color: var(--primary);">Auto-Updated References ({{ total_auto }})</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">These references matched with high confidence and were automatically updated without requiring user review.</p>
+            <div style="overflow-x: auto; max-height: 400px; overflow-y: auto; border-radius: 6px;">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>OLD LISTES-TYPES REF VALUE</th>
+                            <th>NEW LISTES-TYPES REF VALUE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for update in auto_updates %}
+                        <tr>
+                            <td>{{ update.current_ref }}</td>
+                            <td>{{ update.new_ref }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
+        {% endif %}
+
+        {% if skipped_updates %}
+        <div style="margin-top: 2rem; background: var(--background); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid #F59E0B;">
+            <h3 style="margin-top: 0; color: #92400E;">Skipped — Ref Not Found in XML ({{ total_skipped }})</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">These references were not found in the target .list file and were safely skipped.</p>
+            <div style="overflow-x: auto; max-height: 400px; overflow-y: auto; border-radius: 6px;">
+                <table class="audit-table">
+                    <thead style="background-color: #92400E;">
+                        <tr>
+                            <th>OLD LISTES-TYPES REF VALUE</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for update in skipped_updates %}
+                        <tr style="background-color: #FEF3C7; color: #92400E; border-bottom: 1px solid #FCD34D;">
+                            <td>{{ update.current_ref }}</td>
+                            <td>Not Found ✗</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if finalized_updates %}
+        <div style="margin-top: 2rem; background: var(--background); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border);">
+            <h3 style="margin-top: 0; color: var(--success);">User-Resolved References ({{ total_finalized }})</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">These references required user review. You selected the appropriate candidate for each.</p>
+            <div style="overflow-x: auto; max-height: 400px; overflow-y: auto; border-radius: 6px;">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>OLD LISTES-TYPES REF VALUE</th>
+                            <th>NEW LISTES-TYPES REF VALUE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for update in finalized_updates %}
+                        <tr>
+                            <td>{{ update.current_ref }}</td>
+                            <td>{{ update.new_ref }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if has_download %}
+        {# Embed the ZIP bytes as base64 in a data element — no second HTTP request needed. #}
+        <script id="zip-payload" type="application/json">
+            {"b64": "{{ zip_b64 }}", "name": "{{ zip_name }}"}
+        </script>
+        <script>
+            (function () {
+                var payload = JSON.parse(document.getElementById('zip-payload').textContent);
+                var binary  = atob(payload.b64);
+                var bytes   = new Uint8Array(binary.length);
+                for (var i = 0; i < binary.length; i++) { bytes[i] = binary.charCodeAt(i); }
+                var blob    = new Blob([bytes], { type: 'application/zip' });
+                var url     = URL.createObjectURL(blob);
+                var a       = document.createElement('a');
+                a.href      = url;
+                a.download  = payload.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                // Free the object URL after the browser has picked it up
+                setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+            })();
+        </script>
+        {% endif %}
     </div>
     {% endif %}
 {% endblock %}
@@ -195,18 +281,8 @@
 {% block extra_js %}
     <script src="{% static 'JS/jszip.min.js' %}"></script>
     <script>
-        // File name display
-        document.getElementById('pta_file').addEventListener('change', function() {
-            if (this.files[0]) {
-                const wrapper = this.parentElement;
-                const textEl = wrapper.querySelector('.text');
-                textEl.textContent = this.files[0].name;
-                textEl.style.color = 'var(--primary)';
-                wrapper.style.borderColor = 'var(--primary)';
-                wrapper.style.background = 'var(--primary-light)';
-            }
-        });
-        document.getElementById('zipped_fscfai_input').addEventListener('change', function() {
+        // File name display — only zipped_fscfai input exists in this form
+        document.getElementById('zipped_fscfai').addEventListener('change', function() {
             if (this.files[0]) {
                 const wrapper = this.parentElement;
                 const textEl = wrapper.querySelector('.text');
@@ -269,90 +345,22 @@
         });
     
         // Form Submission Handler
-        document.getElementById('uploadForm').addEventListener('submit', async function(e){
-            if (this.dataset.ready === "true") return;
-            e.preventDefault();
+        document.getElementById('uploadForm').addEventListener('submit', function(e){
+            const fscfai_folder_file = document.getElementById('zipped_fscfai').files[0];
 
-            const fscfai_folder_file = document.getElementById('zipped_fscfai_input').files[0];
-            const pta_file_file = document.getElementById('pta_file').files[0];
-            
-            if(!fscfai_folder_file || !pta_file_file){
-                alert('Please select a Listes-Types ZIP folder and a PTA file.');
+            if (!fscfai_folder_file) {
+                e.preventDefault();
+                alert('Please select a FSCFAI ZIP file.');
                 return;
             }
 
             const btn = document.getElementById('btn-lancer_traitement');
-            const originalText = btn.innerText;
-            btn.innerText = 'PREPARING ZIP...';
+            btn.innerText = 'SENDING TO SERVER...';
             btn.disabled = true;
             document.getElementById('processing-overlay').style.display = 'flex';
-
-            try {
-                const zip = await JSZip.loadAsync(fscfai_folder_file);
-                const fscfai_refs = {};
-                const newZip = new JSZip();
-                let listCount = 0;
-                const filePromises = [];
-
-                zip.forEach((relativePath, file) => {
-                    if (file.dir) return;
-                    const parts = relativePath.split('/');
-                    const basename = parts[parts.length - 1];
-                    if (!basename) return;
-                    const ext = basename.split('.').pop().toLowerCase();
-                    
-                    if (ext === 'fscfai') {
-                        const match = basename.match(/(\d{10})/);
-                        if (match) {
-                            if(fscfai_refs[match[1]]) {
-                                console.log(parts[parts.length - 2])
-                                console.log(`Duplicate reference ${match[1]} found.`);
-                            }
-                            fscfai_refs[match[1]] = basename;}
-                    } else if (ext === 'list') {
-                        listCount++;
-                        filePromises.push(file.async('blob').then(content => {
-                            newZip.file(basename, content);
-                        }));
-                    }
-                });
-
-                await Promise.all(filePromises);
-
-                if (listCount === 0) {
-                    alert('No .list files found in the ZIP.');
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                    return;
-                }
-
-                btn.innerText = 'SENDING TO SERVER...';
-                
-                const filteredZipBlob = await newZip.generateAsync({type: 'blob'});
-                
-                const processedFile = new File([filteredZipBlob], "filtered_lists.zip", { type: "application/zip" });
-
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(processedFile);
-                document.getElementById('zipped_fscfai_actual').files = dataTransfer.files;
-
-                document.getElementById('fscfai_json_input').value = JSON.stringify(fscfai_refs);
-
-                this.dataset.ready = "true";
-                this.submit();
-
-            } catch (err) {
-                console.error(err);
-                alert('Error reading ZIP file: ' + err.message);
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }
         });
-        const downloadBtn = document.getElementById('download');
-        if (downloadBtn) {
-            downloadBtn.addEventListener('click', function() {
-                this.disabled = true;
-            });
-        }
+
     </script>
+
+    
 {% endblock %}

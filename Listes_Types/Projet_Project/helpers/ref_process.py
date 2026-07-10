@@ -6,8 +6,8 @@ from rapidfuzz import process, fuzz
 
 # Threshold constants
 SCORE_MIN          = 50   # minimum acceptable fuzzy score
-SCORE_HIGH         = 80   # score above which a single top match is trusted
-SCORE_CLOSE_TOL    = 5    # absolute tolerance for "too-close" top-two scores
+SCORE_HIGH         = 95   # score above which a single top match is trusted
+SCORE_CLOSE_TOL    = 10    # absolute tolerance for "too-close" top-two scores
 CONTENT_MATCH_MIN  = 70   # minimum content-similarity score to accept a result
 TOP_CANDIDATES     = 9 # number of candidates fed to compare_content
 
@@ -119,12 +119,12 @@ class RefProcessor:
 
        
 
-        # if top_score > SCORE_HIGH and (len(extracted) < 2 or not math.isclose(extracted[0][1], extracted[1][1], abs_tol=SCORE_CLOSE_TOL)):
-        #     # Clear single winner
-        #     new_ref = extracted[0][0]
-        #     row["new_xml_ref_value"]      = self.cleaned_list[new_ref]
-        #     row["percentage_of_matching"] = f"{top_score:.2f}%"
-        #     row["new_reference_found"]    = new_ref
+        if top_score > SCORE_HIGH and (len(extracted) < 2 or not math.isclose(extracted[0][1], extracted[1][1], abs_tol=SCORE_CLOSE_TOL)):
+            # Clear single winner
+            new_ref = extracted[0][0]
+            row["new_xml_ref_value"]      = self.cleaned_list[new_ref]
+            row["percentage_of_matching"] = f"{top_score:.2f}%"
+            row["new_reference_found"]    = new_ref
 
         else: 
             

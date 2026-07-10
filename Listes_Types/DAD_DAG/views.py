@@ -1,293 +1,230 @@
-"""
-views.py  (MODIFIED – two-stage audit workflow)
-------------------------------------------------
-Changes vs. the original
-─────────────────────────
-• index() – after calling orchestrator.process_all(), checks whether a
-  manifest was returned (= low-confidence matches exist).  If so, it
-  renders the audit review form instead of the results table.  The
-  session_id is stored in the Django session so the follow-up POST can
-  locate the manifest on disk.
-
-• finalize_review() – new endpoint.  Receives the user's manual choices,
-  calls orchestrator.finalize(), then renders the normal results page.
-
-• _build_context() – shared helper that constructs the final results
-  context dict and encodes the output ZIP as base64 for the inline
-  download (same mechanism as the original).
-
-• get_safe_path() – unchanged.
-• The finally-block that wipes temp files was kept in finalize_review()
-  only; index() must NOT wipe the session dir when a manifest was
-  returned (the draft files must survive the round-trip).
-"""
-
-from __future__ import annotations
-
-import base64
-import json
 import os
-import shutil
+import traceback
 import uuid
+import zipfile
+import base64
+import io
 from pathlib import Path
 
-from django.shortcuts import render
-from django_tables2 import RequestConfig
+from django.shortcuts import redirect, render
 
+from .helpers.xml_parser import xml_parser
 from .services.orchestrator import Orchestrator
-from .helpers.audit_manifest import AuditManifest, NEEDS_REVIEW
-from ..tables import UpdateTable, DeletionTable, AdditionTable
-from analytics.decorators import log_execution
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
-def get_safe_path(path_str: str) -> str:
-    """Add Windows Long Path prefix when needed; no-op on Linux."""
+def get_safe_path(path_str):
     abs_path = os.path.abspath(path_str)
-    if os.name == "nt" and not abs_path.startswith("\\\\?\\"):
-        return "\\\\?\\" + abs_path
+    if os.name == 'nt' and not abs_path.startswith('\\\\?\\'):
+        return '\\\\?\\' + abs_path
     return abs_path
 
 
-def _base_temp_dir() -> Path:
-    return Path(__file__).resolve().parent / "temp"
-
-
-def _build_results_context(request, results: dict, session_dir: Path) -> dict:
-    """
-    Shared helper: build the template context for the final results page.
-    Encodes the output ZIP as base64 for the inline download link.
-    """
-    zip_output_name = results.get("download_name")
-    zip_b64 = None
-    final_zip_name = None
-
-    if zip_output_name and zip_output_name != "N/A":
-        source_zip = session_dir / zip_output_name
-        if source_zip.exists():
-            zip_b64 = base64.b64encode(source_zip.read_bytes()).decode("ascii")
-            final_zip_name = f"{session_dir.name}.zip"
-
-    table_updates   = UpdateTable(results.get("all_grid_data", []))
-    table_additions = AdditionTable(results.get("addition_data", []))
-    table_deletions = DeletionTable(results.get("deletion_data", []))
-
-    RequestConfig(request, paginate=False).configure(table_updates)
-    RequestConfig(request, paginate=False).configure(table_additions)
-    RequestConfig(request, paginate=False).configure(table_deletions)
-
-    return {
-        "table_updates":   table_updates,
-        "table_additions": table_additions,
-        "table_deletions": table_deletions,
-        "summary":         results["total_summary"],
-        "zip_b64":         zip_b64,
-        "zip_name":        final_zip_name,
-        "has_download":    zip_b64 is not None,
-        "processed":       True,
-        "xml_count":       results["total_summary"].get("xml_count", []),
-    }
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# View: Phase 1 – upload + automated processing
-# ─────────────────────────────────────────────────────────────────────────────
-
-TEMPLATE = "Listes_Types/DAD_DAG/index.html"
-REVIEW_TEMPLATE = "Listes_Types/DAD_DAG/audit_review.html"
-
-
-@log_execution('Listes Types', action='DAD DAG Update', project_name=lambda request: '', filename=lambda request: ' + '.join([f.name for f in [request.FILES.get('pta_file'), request.FILES.get('zipped_fscfai')] if f]))
 def index(request):
-    """
-    Handles the initial file upload form (GET) and the first processing
-    pass (POST).
+    if request.method == 'POST' and request.FILES.get('zipped_fscfai'):
+        zip_file = request.FILES['zipped_fscfai']
 
-    POST response branches:
-    ├── No low-confidence matches → render results page (same as original).
-    └── Low-confidence matches exist → render audit review form, keep
-        temp directory alive, store session_id in Django session.
-    """
-    if request.method != "POST":
-        return render(request, TEMPLATE)
+        session_id = uuid.uuid4().hex[:8]
+        base_temp_dir = Path(__file__).resolve().parent / 'temp'
+        session_dir = base_temp_dir / session_id
 
-    if not (request.FILES.get("pta_file") and request.FILES.get("zipped_fscfai")):
-        return render(request, TEMPLATE)
+        safe_session_dir = Path(get_safe_path(str(session_dir)))
+        os.makedirs(safe_session_dir, exist_ok=True)
 
-    pta_file = request.FILES["pta_file"]
-    zip_file = request.FILES["zipped_fscfai"]
+        zip_path = safe_session_dir / zip_file.name
+        with open(zip_path, 'wb+') as destination:
+            for chunk in zip_file.chunks():
+                destination.write(chunk)
 
-    session_id = uuid.uuid4().hex[:8]
-    session_dir = Path(get_safe_path(str(_base_temp_dir() / session_id)))
-    os.makedirs(session_dir, exist_ok=True)
+        extracted_folder = get_safe_path(os.path.join(safe_session_dir, 'e'))
+        os.makedirs(extracted_folder, exist_ok=True)
 
-    # ── Persist uploads ───────────────────────────────────────────────────────
-    excel_path = session_dir / pta_file.name
-    with open(excel_path, "wb+") as fh:
-        for chunk in pta_file.chunks():
-            fh.write(chunk)
-
-    zip_path = session_dir / zip_file.name
-    with open(zip_path, "wb+") as fh:
-        for chunk in zip_file.chunks():
-            fh.write(chunk)
-
-    # ── FSCFAI JSON list ──────────────────────────────────────────────────────
-    fscfai_data = None
-    fscfai_json = request.POST.get("fscfai_json")
-    if fscfai_json:
         try:
-            fscfai_data = json.loads(fscfai_json)
-        except Exception as exc:  # noqa: BLE001
-            return render(request, TEMPLATE, {"error": f"JSON invalide : {exc}"})
+            orchestrator = Orchestrator(zip_path, extracted_folder)
+            results, error = orchestrator.process_all()
 
-    extract_dir = get_safe_path(str(session_dir / "e"))
-    os.makedirs(extract_dir, exist_ok=True)
-    parse_right = request.POST.get("parse_right") == "on"
+            if error:
+                return render(request, 'Listes_Types/DAD_DAG/index.html', {'error': error})
 
-    try:
-        orchestrator = Orchestrator(
-            excel_path, zip_path, extract_dir,
-            fscfai_data=fscfai_data,
-            parse_right=parse_right,
-        )
-        results, error, manifest = orchestrator.process_all()
+            # --- BUG 1 FIX ---
+            # context.unsured_refs is now a dict:
+            #   {current_ref: {'candidates': (old_filename, [(cand_filename, score), ...]), 'xml_paths': set()}}
+            # Transform into template-ready review items.
+            raw_unsured = results.get('unsured_refs', {})
+            review_items = []
 
-        if error:
-            return render(request, TEMPLATE, {"error": error})
+            for idx, (current_ref, data) in enumerate(raw_unsured.items()):
+                xml_paths = list(data.get('xml_paths', []))
+                candidates_data = data.get('candidates')   # tuple from FSCF.start()
 
-        # ── Branch A: audit review required ──────────────────────────────────
-        if manifest is not None and manifest.needs_review:
-            # Store session_id so finalize_review() can locate the manifest.
-            request.session["audit_session_id"] = session_id
+                if not current_ref or not xml_paths or not candidates_data:
+                    continue
+                if not isinstance(candidates_data, tuple) or len(candidates_data) < 2:
+                    continue
 
-            review_payload = manifest.to_review_payload()
-            context = {
-                "needs_audit":    True,
-                "audit_items":    review_payload,
-                "audit_count":    len(review_payload),
-                "session_id":     session_id,
-                # Partial summary so the user knows what has already been done
-                "summary":        results["total_summary"],
-            }
-            return render(request, REVIEW_TEMPLATE, context)
+                old_xml_filename, candidate_list = candidates_data
+                if not candidate_list:
+                    continue
 
-        # ── Branch B: no audit required – finalize immediately ────────────────
-        context = _build_results_context(request, results, session_dir)
-        return render(request, TEMPLATE, context)
+                # Build structured candidate dicts for the template
+                candidates = []
+                for cand_filename, score in candidate_list:
+                    if cand_filename:
+                        candidates.append({
+                            'value': cand_filename,
+                            'description': cand_filename,
+                            'score': round(float(score), 1),
+                        })
 
-    except Exception as exc:  # noqa: BLE001
-        return render(request, TEMPLATE, {"error": str(exc)})
+                if not candidates:
+                    continue
 
-    finally:
-        # Only clean up when we are NOT handing off to the review form.
-        # The flag is set in the session before we return, so check it.
-        audit_session_in_flight = request.session.get("audit_session_id") == session_id
-        if not audit_session_in_flight:
-            try:
-                shutil.rmtree(session_dir, ignore_errors=True)
-            except Exception:
-                pass
+                candidates.sort(key=lambda c: c['score'], reverse=True)
+                best = candidates[0]
+
+                review_items.append({
+                    'item_id': f'item-{idx}',
+                    'current_ref': current_ref,
+                    # Human-readable header in the audit card
+                    'current_ref_description': old_xml_filename,
+                    'xml_paths': xml_paths,
+                    'old_xml_path': old_xml_filename,
+                    'candidates': candidates,
+                    'automated_choice': best['value'],
+                    'automated_description': None, 
+                    'score': best['score'],
+                })
+
+            if review_items:
+                request.session['dad_dag_reviews'] = review_items
+                request.session['dad_dag_session_id'] = session_id
+
+                return render(request, 'Listes_Types/DAD_DAG/audit_review.html', {
+                    'unsured_refs': review_items,
+                    'audit_count': len(review_items),   # BUG 5 FIX: pass audit_count
+                    'summary': results.get('summary', {}),
+                    'session_id': session_id,
+                })
+            else:
+                return render(request, 'Listes_Types/DAD_DAG/index.html', {
+                    'error': 'No unresolved references required user review.',
+                })
+
+        except Exception as exc:
+            return render(request, 'Listes_Types/DAD_DAG/index.html', {
+                'error': f"{exc}\n{traceback.format_exc()}",
+            })
+
+    return render(request, 'Listes_Types/DAD_DAG/index.html')
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# View: Phase 2 – receive user choices and finalize
-# ─────────────────────────────────────────────────────────────────────────────
+def finalize(request):
+    if request.method != 'POST':
+        return redirect('dad_dag')
 
-def finalize_review(request):
-    """
-    Dedicated endpoint for the audit review form submission (Phase 2).
+    pending_reviews = request.session.pop('dad_dag_reviews', [])
+    if not pending_reviews:
+        return redirect('dad_dag')
 
-    Expected POST fields
-    --------------------
-    choice_<item_id> : str
-        The FSCFAI reference string the user selected for that audit item.
-        One field per item in the audit report.
+    updates_by_file = {}
 
-    The session_id is read from the Django session to locate the manifest
-    on disk – the user never sees or can tamper with the path.
-    """
-    if request.method != "POST":
-        return render(request, TEMPLATE, {"error": "Méthode non autorisée."})
+    for item in pending_reviews:
+        choice_key = f"choice_{item['item_id']}"
+        selected_ref = request.POST.get(choice_key)
+        if not selected_ref or selected_ref == '__SKIP__':
+            continue
 
-    session_id = request.session.get("audit_session_id")
-    if not session_id:
-        return render(request, TEMPLATE, {
-            "error": "Session d'audit expirée ou introuvable. Veuillez recommencer."
-        })
+        xml_paths = item.get('xml_paths', [])
+        for xml_path in xml_paths:
+            if not xml_path:
+                continue
 
-    session_dir = Path(get_safe_path(str(_base_temp_dir() / session_id)))
+            # --- BUG 3 FIX: update_data is now a plain dict, not a ('type', dict) tuple ---
+            if xml_path not in updates_by_file:
+                updates_by_file[xml_path] = []
+            updates_by_file[xml_path].append({
+                'current_ref': item['current_ref_description'],
+                'new_ref': selected_ref,
+            })
 
-    try:
-        manifest = AuditManifest.load(session_dir)
-    except FileNotFoundError:
-        return render(request, TEMPLATE, {
-            "error": "Manifeste d'audit introuvable. La session a peut-être expiré."
-        })
+    versioned_files = []
+    finalized_updates = []
+    skipped_updates = []    # Refs whose 10-digit number was not found in the target XML
 
-    if manifest.status == "finalized":
-        return render(request, TEMPLATE, {
-            "error": "Cette session a déjà été finalisée."
-        })
+    # Process each file once with all its updates
+    for xml_path, updates_list in updates_by_file.items():
+        safe_xml_path = get_safe_path(xml_path)
+        if not os.path.exists(safe_xml_path):
+            continue
 
-    # ── Parse user choices from POST data ────────────────────────────────────
-    choices: dict[str, str] = {}
-    for key, value in request.POST.items():
-        if key.startswith("choice_"):
-            item_id = key[len("choice_"):]
-            choices[item_id] = value.strip()
+        parser = xml_parser(safe_xml_path, None)
+        parser.parse_xml()
+        file_updated = False
 
-    # Merge choices into the manifest (on disk).
-    stale = manifest.apply_user_choices(choices)
-    if stale:
-        # Log but don't abort – stale IDs are simply ignored.
-        # In production, wire this to your logging framework.
-        print(f"[audit] WARNING: unknown item_ids in POST: {stale}")
+        for update_data in updates_list:
+            current_ref = update_data['current_ref']
+            new_ref = update_data['new_ref']
 
-    manifest.save()
+            # NEW: Verify the ref actually lives in THIS specific XML file before writing.
+            # A ref may be shared across multiple .list files, so we must confirm existence
+            # per-file rather than blindly updating every file that was processed.
+            if not parser.is_ref_exist(current_ref):
+                skipped_updates.append({
+                    'xml_path': safe_xml_path,
+                    'current_ref': current_ref,
+                    'new_ref': new_ref,
+                })
+                continue
 
-    # ── Re-instantiate orchestrator with an empty context ────────────────────
-    # We only need the finalize() method; the context will be populated
-    # from the manifest's pending_dir during finalize().
-    extract_dir = manifest.pending_dir
-    # Dummy paths – finalize() reads everything from manifest & disk.
-    orchestrator = Orchestrator(
-        pta_full_path="",
-        zip_path="",
-        extract_dir=extract_dir,
-    )
-    # Rebuild fscfai_files from the manifest's audit_items so that
-    # xml_parser.update_reference() can resolve chosen refs to filenames.
-    # (The original fscfai_files were in SharedData, which didn't persist.
-    #  We reconstruct the minimal subset needed for patching.)
-    for item in manifest.audit_items:
-        for candidate in item.get("candidates", []):
-            ref = candidate.get("value")
-            if ref:
-                # The filename convention: <ref>_*.fscfai  – we stored it
-                # in the manifest's candidate list as returned by excel_parser.
-                # If the full filename is available, use it; else skip.
-                # (Extend record_fuzzy_flag to store filenames if needed.)
-                pass
+            updated, _ = parser.update_reference(current_ref, new_ref)
+            if updated:
+                file_updated = True
+                finalized_updates.append({
+                    'xml_path': safe_xml_path,
+                    'current_ref': current_ref,
+                    'new_ref': new_ref,
+                })
 
-    results, error = orchestrator.finalize(manifest)
+        if file_updated:
+            versioned_path = parser.save_versioned_file()
+            if versioned_path and os.path.exists(versioned_path):
+                versioned_files.append(versioned_path)
 
-    # ── Clean up session key ──────────────────────────────────────────────────
-    try:
-        del request.session["audit_session_id"]
-    except KeyError:
-        pass
+    completion_message = 'Review completed.'
+    has_download = False
+    zip_b64 = None
+    zip_name = None
 
-    if error:
-        return render(request, TEMPLATE, {"error": error})
-
-    try:
-        context = _build_results_context(request, results, session_dir)
-        return render(request, TEMPLATE, context)
-    finally:
+    if versioned_files:
         try:
-            shutil.rmtree(session_dir, ignore_errors=True)
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for file_path in set(versioned_files):
+                    if os.path.exists(file_path):
+                        arcname = os.path.basename(file_path)
+                        zf.write(file_path, arcname=arcname)
+
+            zip_buffer.seek(0)
+            zip_b64 = base64.b64encode(zip_buffer.getvalue()).decode('utf-8')
+            zip_name = f"dad_dag_updated_{uuid.uuid4().hex[:8]}.zip"
+            has_download = True
         except Exception:
             pass
+
+    return render(request, 'Listes_Types/DAD_DAG/index.html', {
+        'success': completion_message,
+        'processed': True,
+        'finalized_updates': finalized_updates,
+        'skipped_updates': skipped_updates,
+        'total_finalized': len(finalized_updates),
+        'total_skipped': len(skipped_updates),
+        'summary': {
+            'total': len(finalized_updates),
+            'matches': len(finalized_updates),
+            'updates': len(finalized_updates),
+        },
+        'xml_count': len(updates_by_file),
+        'table_updates': None,
+        'has_download': has_download,
+        'zip_b64': zip_b64,
+        'zip_name': zip_name,
+    })
