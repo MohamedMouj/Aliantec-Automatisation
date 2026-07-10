@@ -57,6 +57,10 @@ def dashboard(request):
 
     recent_logs = logs[:20]
 
+    applications = list(
+        ExecutionLog.objects.values_list('application', flat=True).order_by('application').distinct()
+    )
+
     context = {
         'logs': recent_logs,
         'total_executions': total_executions,
@@ -75,12 +79,6 @@ def dashboard(request):
             'status': status_filter or '',
             'filename': filename_filter or '',
         },
-        'applications': [
-            'Listes Types',
-            'FSCFAI Compare',
-            'Listing Devices',
-            'Extraction VIN',
-            'Extraction SM',
-        ],
+        'applications': applications,
     }
     return render(request, 'analytics/dashboard.html', context)
