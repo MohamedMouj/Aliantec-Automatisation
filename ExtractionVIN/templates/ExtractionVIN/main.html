@@ -394,9 +394,41 @@
     {% endif %}
 
     <script>
+        const processingOverlay = document.getElementById('processing-overlay');
+        let overlayTimeout = null;
+
+        function showProcessingOverlay() {
+            processingOverlay.style.display = 'flex';
+            if (overlayTimeout) {
+                clearTimeout(overlayTimeout);
+            }
+            overlayTimeout = setTimeout(hideProcessingOverlay, 25000);
+        }
+
+        function hideProcessingOverlay() {
+            if (processingOverlay) {
+                processingOverlay.style.display = 'none';
+            }
+            if (overlayTimeout) {
+                clearTimeout(overlayTimeout);
+                overlayTimeout = null;
+            }
+        }
+
         // Show overlay on submit
-        document.getElementById('upload-form').addEventListener('submit', function() {
-            document.getElementById('processing-overlay').style.display = 'flex';
+        const uploadForm = document.getElementById('upload-form');
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', function() {
+                showProcessingOverlay();
+            });
+        }
+
+        // Hide overlay when browser regains focus or page becomes visible
+        window.addEventListener('focus', hideProcessingOverlay);
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                hideProcessingOverlay();
+            }
         });
 
         // Add file name display
