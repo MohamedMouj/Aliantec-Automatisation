@@ -68,7 +68,7 @@
 .app-card-front img {
     width: 72px;
     height: 72px;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0rem;
     transition: transform 0.4s ease;
     filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));
 }

@@ -1,111 +1,68 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Aliantec Toolkit | Listes-Types - Select List Type{% endblock %}
+{% block title %}Aliantec Toolkit | Applications{% endblock %}
 
 {% block extra_css %}
-    <style>
-        .list-type-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-            margin-bottom: 2.5rem;
-        }
-
-        .list-type-card {
-            background: var(--surface, #ffffff);
-            padding: 1.5rem;
-            border-radius: var(--radius-lg, 12px);
-            border: 1px solid var(--border, #e2e8f0);
-            text-align: center;
-            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-decoration: none;
-            display: flex;
-            flex-direction: column;
-            color: inherit;
-        }
-
-        .list-type-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
-            border-color: var(--primary, #3b82f6);
-        }
-
-        .card-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: var(--secondary, #1e293b);
-            margin-bottom: 0.5rem;
-        }
-
-        .card-description {
-            font-size: 0.9375rem;
-            color: var(--text-muted, #64748b);
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-            flex-grow: 1;
-        }
-
-        .card-button {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background-color: var(--primary-light, #eff6ff);
-            color: var(--primary, #3b82f6);
-            text-decoration: none;
-            border-radius: var(--radius-md, 6px);
-            font-weight: 600;
-            font-size: 0.875rem;
-            transition: background-color 0.2s, color 0.2s;
-            margin-top: auto;
-        }
-
-        .list-type-card:hover .card-button {
-            background-color: var(--primary, #3b82f6);
-            color: #ffffff;
-        }
-    </style>
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
     <header class="page-header">
-        <h1>Listes-Types Update</h1>
-        <p>Select a list type to begin processing and synchronization.</p>
+        <h1>List Types Apps</h1>
     </header>
 
-
-
-    {% if error %}
-    <div class="alert alert-error">
-        <strong>Error:</strong> {{ error }}
-    </div>
-    {% endif %}
-
-    <div class="list-type-grid">
-        {% for option in list_type_options %}
-        <a href="{{ option.url }}" class="list-type-card">
-            <div class="card-icon">
-                {% if option.value == 'fenetrage' %}
-                    🪟
-                {% elif option.value == 'dad_dag' %}
-                    📊
-                {% elif option.value == 'project_project' %}
-                    📋
-                {% endif %}
+    <div class="dashboard-grid">
+        <div class="app-card" onclick="location.href='/listes_types/fenetrage/'">
+            <div class="app-card-inner">
+                <div class="app-card-front">
+                    <div class="app-icon-wrapper" ><!-- style="background: var(--primary-light); width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center;"> -->
+                        <img src="{% static 'xml.svg' %}" alt="Listes-Types" style="width: 80px; height: 80px;">
+                    </div>
+                    <h3>Listes-Types Update</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">List Types Synchronization against PTA</p>
+                </div>
+                <div class="app-card-back">
+                    <h3 style="color: white;">Listes-Types</h3>
+                    <p>Input: PTA File + FSCFAI Folder(List Type + New Fenetrage).<br>Output: List Type Adapte.</p>
+                    <div class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.5); margin-top: 1.5rem; background: rgba(255,255,255,0.1);">Launch Application</div>
+                </div>
             </div>
-            <div class="card-title">{{ option.label }}</div>
-            <div class="card-description">{{ option.description }}</div>
-            <div class="card-button">Access →</div>
-        </a>
-        {% endfor %}
+        </div>
+
+        <div class="app-card" onclick="location.href='/listes_types/dad_dag/'">
+            <div class="app-card-inner">
+                <div class="app-card-front">
+                    <div class="app-icon-wrapper"><!-- style="background: #fef3c7; width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;"> -->
+                        <img src="{% static 'DAD_DAG.svg' %}" alt="DAG To DAD" style="width: 100px; height: 100px;">
+                    </div>
+                    <h3>DAG To DAD</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Convert DAG references into DAD</p>
+                </div>
+                <div class="app-card-back">
+                    <h3 style="color: white;">DAG To DAD</h3>
+                    <p>Input: ZIP(FCSFAI folder + OLD LT).<br>Output: Updated List Types.</p>
+                    <div class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.5); margin-top: 1.5rem; background: rgba(255,255,255,0.1);">Launch Application</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card" onclick="location.href='/listes_types/projet_project/'">
+            <div class="app-card-inner">
+                <div class="app-card-front">
+                    <div class="app-icon-wrapper"><!--style="background: #dcfce7; width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;"> -->
+                        <img src="{% static 'project_project.svg' %}" alt="Listing Devices" style="width: 80px; height: 80px;">
+                    </div>
+                    <h3>Project To Project</h3>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">Building project from existing project</p>
+                </div>
+                <div class="app-card-back">
+                    <h3 style="color: white;">Project To Project</h3>
+                    <p>Input: ZIP(FSCSFAI Folder + OLD List Types).<br>Output: Updated List Types.</p>
+                    <div class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.5); margin-top: 1.5rem; background: rgba(255,255,255,0.1);">Launch Application</div>
+                </div>
+            </div>
+        </div>
+
     </div>
-
 {% endblock %}
-
