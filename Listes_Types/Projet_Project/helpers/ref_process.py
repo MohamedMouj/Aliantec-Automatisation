@@ -111,7 +111,7 @@ class RefProcessor:
 
         top_score = extracted[0][1]
 
-        # Below minimum — or FSCF content unavailable
+        # CHANGE HERE
         if top_score < SCORE_MIN or self.fs_obj.get_fscf_content(self.get_fn(extracted[0][0])) is None:
             row["status"] = "NO_MATCH"
             row["reason"] = "Score below 75% or FSCF content unavailable."
@@ -120,8 +120,8 @@ class RefProcessor:
        
 
         if top_score > SCORE_HIGH and (len(extracted) < 2 or not math.isclose(extracted[0][1], extracted[1][1], abs_tol=SCORE_CLOSE_TOL)):
-            # Clear single winner
-            new_ref = extracted[0][0]
+            new_ref = extracted[0][0]            # Clear single winner
+
             row["new_xml_ref_value"]      = self.cleaned_list[new_ref]
             row["percentage_of_matching"] = f"{top_score:.2f}%"
             row["new_reference_found"]    = new_ref
@@ -133,7 +133,7 @@ class RefProcessor:
 
             best_fn, best_score = result if result is not None else (None, 0.0)
 
-            if best_fn is not None and best_score > SCORE_HIGH:
+            if best_fn is not None:
                 row["new_xml_ref_value"]      = best_fn
                 row["percentage_of_matching"] = f"{best_score:.2f}%"
                 row["new_reference_found"]    = best_fn

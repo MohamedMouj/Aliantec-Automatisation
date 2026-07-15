@@ -34,8 +34,6 @@ class Orchestrator:
             parsed_xmls = []
             xml_list = self.context.xml_files
             for xml_path in xml_list:
-                if xml_path.split('/')[-1].split('_')[1].startswith('D'):
-                    continue
                 temp_xml = xml_parser(xml_path, self.context)
                 temp_xml.parse_xml()
                 refs = {r["ref"] for r in temp_xml.get_references()}
